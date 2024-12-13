@@ -1,0 +1,56 @@
+{
+	"data": [
+		{
+			"id": "1000",
+			"code": "Juan Javier",
+			"name": "Perez Pereira",
+			"description": "Fuero Sindical;Gratificaciones legales",
+			"image": "bamboo-watch.jpg",
+			"price": "11597852-1",
+			"date": "09/13/2022",
+			"category": "Fuero Sindical;Gratificaciones legales",
+			"quantity": 24,
+			"inventoryStatus": "Finalizada",
+			"rating": 5
+		},
+		{
+			"id": "1001",
+			"code": "Pedro Francisco",
+			"name": "Loyola Mendez",
+			"description": "",
+			"image": "black-watch.jpg",
+			"price": "15987632-5",
+			"date": "09/12/2022",
+			"category": "Despido Injustificado",
+			"quantity": 61,
+			"inventoryStatus": "Eliminar",
+			"rating": 4
+		},
+		{
+			"id": "1002",
+			"code": "Luis Robert",
+			"name": "Watson Cerezo",
+			"description": "Asignación Familia",
+			"image": "blue-band.jpg",
+			"price": "15632789-1",
+			"date": "09/11/2022",
+			"category": "Asignación Familia",
+			"quantity": 2,
+			"inventoryStatus": "Pendiente",
+			"rating": 3
+		},
+		{
+			"id": "1003",
+			"code": "Juan Carlos",
+			"name": "Flores Castillo",
+			"description": "Asignación de colación",
+			"image": "blue-t-shirt.jpg",
+			"price": "10985652-3",
+			"date": "09/10/2022",
+			"category": "Asignación de colación",
+			"quantity": 25,
+			"inventoryStatus": "Finalizada",
+			"rating": 5
+		}
+	]
+}
