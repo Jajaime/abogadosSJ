@@ -1,0 +1,28 @@
+{
+	"data": [
+		{
+			"id": "1000",
+			"nombre": "Carnes Car",
+			"rut": "76.785.987-k",
+			"domicilio": "Perez Pereira #3215"
+		},
+		{
+			"id": "1001",
+			"nombre": "Homecenter Sodimac",
+			"rut": "75.798.953-k",
+			"domicilio": "Loyola Mendez #8523"
+		},
+		{
+			"id": "1002",
+			"nombre": "ABCDin",
+			"rut": "77.789.852-k",
+			"domicilio": "Watson Cerezo #9652"
+		},
+		{
+			"id": "1003",
+			"nombre": "falabella",
+			"rut": "77.985.963-5",
+			"domicilio": "Flores Castillo #9652"
+		}
+	]
+}

@@ -334,6 +334,7 @@ const Crud = () => {
                         ref={dt}
                         value={products}
                         selection={selectedProducts}
+                        selectionMode="single"
                         onSelectionChange={(e) => setSelectedProducts(e.value as any)}
                         dataKey="id"
                         paginator

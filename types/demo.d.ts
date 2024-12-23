@@ -133,6 +133,14 @@ declare namespace Demo {
         [key: string]: string | string[] | number | boolean | undefined | ProductOrder[] | InventoryStatus;
     };
 
+    type DemandadoSol = {
+        id?: string;
+        nombre: string;
+        rut: string;
+        domicilio: string;
+        [key: string]: string | undefined; // Firma de índice
+    };
+
     type ProductOrder = {
         id?: string;
         productCode?: string;
