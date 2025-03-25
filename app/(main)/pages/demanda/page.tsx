@@ -655,6 +655,7 @@ const DemandaPage = () => {
                         </div>
                     </div>
                 </div> */}
+                 {/*inicio de pagina con 2 columnas
                 <div className="card">
                     <h5>INGRESO DE DEMANDA</h5>
                     <div className="p-fluid formgrid grid">
@@ -694,7 +695,7 @@ const DemandaPage = () => {
                             />
                         ))}
                     </div>
-                </div>
+                </div>*/}
             </div>
             {/*inicio de pagina con 2 columnas*/}
             <div className="col-12 md:col-6">
