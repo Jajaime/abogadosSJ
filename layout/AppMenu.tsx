@@ -20,6 +20,13 @@ const AppMenu = () => {
             items: [
                 { label: 'Ingresar Demanda', icon: 'pi pi-fw pi-file-import', to: '/pages/demanda', badge: 'NEW' },
                 { label: 'Demandas', icon: 'pi pi-fw pi-book', to: '/pages/demanda/list', badge: 'NEW' },
+                { label: 'Documentación', icon: 'pi pi-fw pi-book', to: '', badge: 'NEW' },
+            ]
+        },
+        {
+            label: 'Mantenedores',
+            items: [
+                { label: 'Usuarios', icon: 'pi pi-fw pi pi-user', to: '/pages/usuario/list', badge: 'NEW' }
             ]
         }
     ];

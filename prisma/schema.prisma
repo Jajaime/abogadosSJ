@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id       String  @id @default(uuid())
+  email    String  @unique
+  name     String?
+  createdAt DateTime @default(now())
+}
+
+model Demanda {
+  id                 Int      @id @default(autoincrement())
+  nombres            String
+  apPaterno          String
+  apMaterno          String
+  run                String   @unique
+  nacionalidad       String
+  estadoCivil        String
+  fechaNacimiento    DateTime
+  correoElectronico  String   @unique
+  nombreRazonSocial   String
+  rutRazonSocial      String   @unique
+  domicilioRazonSocial String
+  representanteLegal  String
+  runRepresentanteLegal String
+  fechaInicioRelacionLaboral DateTime
+  naturalezaContrato         String
+  funciones                  String
+  lugar                      String
+  jornada                    String
+  otraJornada                String?  // Opcional si 'jornada' es 'otra especificar'
+  registroAsistencia         String   // 'Sí' o 'No'
+  remuneracion               Float?
+  formaPago                  String
+  liquidacionSueldo          String   // 'Sí' o 'No'
+  cotizacionSalud            String
+  cotizacionAfp              String
+  cotizacionAfc              String
+  vacaciones                 Float?
+  fuero                      String
+  demandadoSolidario DemandadoSolidario[]
+  fechaTerminoRelaLaboral      DateTime  @db.Date
+  motivoTermino                String
+  tipoDespido                  String
+  despidoDisciplinario         String
+  otroDespidoDisciplinario     String?
+  anosServicios                Boolean
+  mesAviso                    Boolean
+  finiquito                   Boolean
+  prestacionesAdeudadas        String
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+}
+
+model DemandadoSolidario {
+  id                    Int      @id @default(autoincrement())
+  nombreRazonSocial     String
+  rut                   String   @unique
+  domicilio             String
+  demandaId             Int      // Relación con la demanda
+  demanda               Demanda  @relation(fields: [demandaId], references: [id])
+}

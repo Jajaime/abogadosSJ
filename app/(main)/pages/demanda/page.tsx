@@ -16,6 +16,8 @@ import { classNames } from 'primereact/utils';
 import { Column } from 'primereact/column';
 import { RadioButton, RadioButtonChangeEvent } from 'primereact/radiobutton';
 import { InputNumber } from "primereact/inputnumber";
+import { MultiSelect } from 'primereact/multiselect';
+        
 
 interface DropdownItem {
     name: string;
@@ -36,7 +38,7 @@ const DemandaPage = () => {
     const [dropdownItemCotizacionAfc, setDropdownItemCotizacionAfc] = useState<DropdownItem | null>(null);
     const [dropdownItemDespidoDisciplinario, setDropdownItemDespidoDisciplinario] = useState<DropdownItem | null>(null);
     const [dropdownItemTipoDespido, setDropdownItemTipoDespido] = useState<DropdownItem | null>(null);
-    const [dropdownItemPrestacionesAdeudada, setDropdownItemPrestacionesAdeudada] = useState<DropdownItem | null>(null);
+    const [dropdownItemPrestacionesAdeudada, setDropdownItemPrestacionesAdeudada] = useState<DropdownItem[]>([]);
     const [generatedButtons, setGeneratedButtons] = useState<DropdownItem[]>([]);
     const message = useRef<Messages>(null);
     const [calendarValueFNac, setCalendarValueFNac] = useState<any>(null);
@@ -655,7 +657,7 @@ const DemandaPage = () => {
                         </div>
                     </div>
                 </div> */}
-                 {/*inicio de pagina con 2 columnas
+                {/*inicio de pagina con 2 columnas
                 <div className="card">
                     <h5>INGRESO DE DEMANDA</h5>
                     <div className="p-fluid formgrid grid">
@@ -740,7 +742,7 @@ const DemandaPage = () => {
             </div>
             <div className="col-12 md:col-6">
                 <div className="card">
-                    <h5>DEMANDDO SOLIDARIO</h5>
+                    <h5>DEMANADO SOLIDARIO</h5>
                     <Toolbar start={toolbarLeftTemplate}></Toolbar>
                     <DataTable
                         ref={dtDemandadoSol}
@@ -814,7 +816,7 @@ const DemandaPage = () => {
 
             {/*Inicio Seccion Relacion Laboral*/}
             <div className="col-12">
-                <div className="card">
+                "<div className="card">
                     <h5>RELACION LABORAL</h5>
                     <div className="p-fluid formgrid grid">
                         <div className="field col-12 md:col-3">
@@ -1156,14 +1158,16 @@ const DemandaPage = () => {
                         </div>
                         <div className="field col-12 md:col-4">
                             <label htmlFor="prestacionesAdeudadas">Prestaciones Adeudadas</label>
-                            <Dropdown
+                            <MultiSelect
                                 id="prestacionesAdeudadas"
-                                value={dropdownItemPrestacionesAdeudada}
+                                value={dropdownItemPrestacionesAdeudada}  // Ahora es un array
                                 onChange={(e) => setDropdownItemPrestacionesAdeudada(e.value)}
                                 options={dropdownItemsPrestacionesAdeudadas}
                                 optionLabel="name"
-                                placeholder="Selecccione">
-                            </Dropdown>
+                                placeholder="Seleccione"
+                                maxSelectedLabels={3}  // Muestra hasta 3 etiquetas seleccionadas
+                                className="w-full md:w-20rem"
+                            />
                         </div>
                     </div>
                 </div>
