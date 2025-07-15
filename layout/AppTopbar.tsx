@@ -20,9 +20,11 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
 
     return (
         <div className="layout-topbar">
-            <Link href="/" className="layout-topbar-logo">
-                <img src={`/layout/images/abogados/logo.png`} width="250px" height="3.5rem" alt="logo" />
-                {/* <span>SAKAI</span> */}
+            <Link href="/" className="layout-topbar-logo justify-center">
+                <div className="text-white leading-tight">
+                    <div className="text font-bold" style={{ fontSize: '1.15rem', fontWeight: 'bold', justifySelf: 'center' }}>SALAS & JERIA</div>
+                    <div className="text tracking-wide" style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>ABOGADOS LABORALES</div>
+                </div>
             </Link>
 
             <button ref={menubuttonRef} type="button" className="p-link layout-menu-button layout-topbar-button" onClick={onMenuToggle}>

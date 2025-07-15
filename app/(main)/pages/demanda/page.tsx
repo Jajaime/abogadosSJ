@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
@@ -17,7 +18,7 @@ import { Column } from 'primereact/column';
 import { RadioButton, RadioButtonChangeEvent } from 'primereact/radiobutton';
 import { InputNumber } from "primereact/inputnumber";
 import { MultiSelect } from 'primereact/multiselect';
-        
+
 
 interface DropdownItem {
     name: string;
@@ -25,6 +26,9 @@ interface DropdownItem {
 }
 
 const DemandaPage = () => {
+
+    const router = useRouter();
+
     const [dropdownItemMateria, setDropdownItemMateria] = useState<DropdownItem | null>(null);
     const [dropdownItemNacionalidad, setDropdownItemNacionalidad] = useState<DropdownItem | null>(null);
     const [dropdownItemNatuContrato, setDropdownItemNatuContrato] = useState<DropdownItem | null>(null);
@@ -72,6 +76,47 @@ const DemandaPage = () => {
     const [radioValueAnosServicio, setRadioValueAnosServicio] = useState(null);
     const [radioValueMesAviso, setRadioValueMesAviso] = useState(null);
     const [radioValueFiniquito, setRadioValueFiniquito] = useState(null);
+
+    const [formData, setFormData] = useState<{
+        nombres: string;
+        apPaterno: string;
+        apMaterno: string;
+        run: string;
+        fechaNacimiento: string;
+        nacionalidad: string;
+        correoElectronico: string;
+        estadoCivil: string;
+    }>({
+        nombres: "", apPaterno: "", apMaterno: "", run: "", fechaNacimiento: "", nacionalidad: "", correoElectronico: "", estadoCivil: ""
+    });
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement> | { target: { name: string, value: any } }) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // Verifica el contenido de formData
+        console.log("Enviando datos:", formData);
+
+        const response = await fetch("/api/demandas", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData),
+        });
+
+        if (response.ok) {
+            alert("Demanda registrada exitosamente");
+            setFormData({
+                nombres: "", apPaterno: "", apMaterno: "", run: "", fechaNacimiento: "", nacionalidad: "", correoElectronico: "", estadoCivil: ""
+            });
+            router.push('/pages/demanda/list'); // Navega a la ruta específica
+        } else {
+            alert("Error al registrar la demanda");
+        }
+    };
 
     useEffect(() => {
         DemandadoSolService.getDemandadoSols().then((data) => setDemandadoSols(data as any));
@@ -264,7 +309,7 @@ const DemandaPage = () => {
 
     const dropdownItemsEstadoCivil: DropdownItem[] = useMemo(
         () => [
-            { name: 'Solerto(a)', code: '1' },
+            { name: 'Soltero(a)', code: '1' },
             { name: 'Casado(a)', code: '2' },
             { name: 'Conviviente civil', code: '3' },
             { name: 'Separado(a) judicialmente', code: '4' },
@@ -544,77 +589,151 @@ const DemandaPage = () => {
             <div className="col-12">
                 <div className="card">
                     <h5>DATOS CLIENTE</h5>
-                    <div className="p-fluid formgrid grid">
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="nombres">Nombres</label>
-                            <InputText
-                                id="nombres"
-                                type="text"
-                                placeholder='Ingrese los nombres' />
+                    <form onSubmit={handleSubmit} className="p-fluid formgrid grid">
+                        <div className="p-fluid formgrid grid">
+                            <div className="field col-12 md:col-4">
+                                <label htmlFor="nombres">Nombres</label>
+                                <InputText
+                                    id="nombres"
+                                    type="text"
+                                    value={formData.nombres}
+                                    onChange={(e) =>
+                                        handleChange({
+                                            target: {
+                                                name: 'nombres',
+                                                value: e.target.value
+                                            }
+                                        })
+                                    }
+                                    placeholder='Ingrese los nombres' />
+                            </div>
+                            <div className="field col-12 md:col-4">
+                                <label htmlFor="apPaterno">Apellido Paterno</label>
+                                <InputText
+                                    id="apPaterno"
+                                    type="text"
+                                    value={formData.apPaterno}
+                                    onChange={(e) =>
+                                        handleChange({
+                                            target: {
+                                                name: 'apPaterno',
+                                                value: e.target.value
+                                            }
+                                        })
+                                    }
+                                    placeholder='Ingrese apellido paterno' />
+                            </div>
+                            <div className="field col-12 md:col-4">
+                                <label htmlFor="apMaterno">Apellido Materno</label>
+                                <InputText
+                                    id="apMaterno"
+                                    type="text"
+                                    value={formData.apMaterno}
+                                    onChange={(e) =>
+                                        handleChange({
+                                            target: {
+                                                name: 'apMaterno',
+                                                value: e.target.value
+                                            }
+                                        })
+                                    }
+                                    placeholder='Ingrese apellido materno' />
+                            </div>
+                            <div className="field col-12 md:col-4">
+                                <label htmlFor="run">Rut/Pasaporte/Cédula</label>
+                                <InputText
+                                    id="run"
+                                    type="text"
+                                    value={formData.run}
+                                    onChange={(e) =>
+                                        handleChange({
+                                            target: {
+                                                name: 'run',
+                                                value: e.target.value
+                                            }
+                                        })
+                                    }
+                                    placeholder='Ingrese Rut/Pasaporte/Cédula' />
+                            </div>
+                            <div className="field col-12 md:col-4">
+                                <label htmlFor="nacionalidad">Nacionalidad</label>
+                                <Dropdown
+                                    id="nacionalidad"
+                                    value={formData.nacionalidad}
+                                    onChange={(e) =>
+                                        handleChange({
+                                            target: {
+                                                name: 'nacionalidad',
+                                                value: e.value
+                                            }
+                                        })
+                                    }
+                                    options={dropdownItemsNacionalidades}
+                                    optionLabel="name"
+                                    placeholder="Selecccione Nacionalidad"
+                                    filter></Dropdown>
+                            </div>
+                            <div className="field col-12 md:col-4">
+                                <label htmlFor="estadoCivil">Estado Civil</label>
+                                <Dropdown
+                                    id="estadoCivil"
+                                    value={formData.estadoCivil}
+                                    onChange={(e) =>
+                                        handleChange({
+                                            target: {
+                                                name: 'estadoCivil',
+                                                value: e.value
+                                            }
+                                        })
+                                    }
+                                    options={dropdownItemsEstadoCivil}
+                                    optionLabel="name"
+                                    placeholder="Selecccione Estado Civil">
+                                </Dropdown>
+                            </div>
+                            <div className="field col-12 md:col-4">
+                                <label htmlFor="nacimiento">Fecha de Nacimiento</label>
+                                <Calendar
+                                    id="nacimiento"
+                                    showIcon
+                                    showButtonBar
+                                    value={formData.fechaNacimiento ? new Date(formData.fechaNacimiento) : null}
+                                    dateFormat='dd/mm/yy'
+                                    onChange={(e) =>
+                                        handleChange({
+                                            target: {
+                                                name: 'fechaNacimiento',
+                                                value: e.value ?? null
+                                            }
+                                        })
+                                    }
+                                    placeholder='dd/mm/yyyy'
+                                    locale='es' />
+                            </div>
+                            <div className="field col-12 md:col-6">
+                                <label htmlFor="email">Correo Electrónico</label>
+                                <InputText
+                                    id="email"
+                                    type="text"
+                                    value={formData.correoElectronico}
+                                    onChange={(e) =>
+                                        handleChange({
+                                            target: {
+                                                name: 'correoElectronico',
+                                                value: e.target.value
+                                            }
+                                        })
+                                    }
+                                    placeholder='ejemplo@direccion.cl' />
+                            </div>
+                            <div className="field col-12 md:col-6" style={{
+                                paddingTop: '10px', marginTop: '0rem'
+                            }}>
+                                <Button type="submit" label="Registrar Demanda" className="p-button-success" />
+                            </div>
                         </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="apPaterno">Apellido Paterno</label>
-                            <InputText
-                                id="apPaterno"
-                                type="text"
-                                placeholder='Ingrese apellido paterno' />
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="apMaterno">Apellido Materno</label>
-                            <InputText
-                                id="apMaterno"
-                                type="text"
-                                placeholder='Ingrese apellido materno' />
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="run">Rut/Pasaporte/Cédula</label>
-                            <InputText
-                                id="run"
-                                type="text"
-                                placeholder='Ingrese Rut/Pasaporte/Cédula' />
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="nacionalidad">Nacionalidad</label>
-                            <Dropdown
-                                id="nacionalidad"
-                                value={dropdownItemNacionalidad}
-                                onChange={(e) => setDropdownItemNacionalidad(e.value)}
-                                options={dropdownItemsNacionalidades}
-                                optionLabel="name"
-                                placeholder="Selecccione Nacionalidad"
-                                filter></Dropdown>
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="estadoCivil">Estado Civil</label>
-                            <Dropdown
-                                id="estadoCivil"
-                                value={dropdownItemEstadoCivil}
-                                onChange={(e) => setDropdownItemEstadoCivil(e.value)}
-                                options={dropdownItemsEstadoCivil}
-                                optionLabel="name"
-                                placeholder="Selecccione Estado Civil">
-                            </Dropdown>
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="nacimiento">Fecha de Nacimiento</label>
-                            <Calendar
-                                id="nacimiento"
-                                showIcon
-                                showButtonBar
-                                value={calendarValueFNac}
-                                dateFormat='dd/mm/yy'
-                                onChange={(e) => setCalendarValueFNac(e.value ?? null)}
-                                placeholder='dd/mm/yyyy'
-                                locale='es' />
-                        </div>
-                        <div className="field col-12 md:col-6">
-                            <label htmlFor="run">Correo Electrónico</label>
-                            <InputText
-                                id="run"
-                                type="text"
-                                placeholder='ejemplo@direccion.cl' />
-                        </div>
-                    </div>
+
+                    </form>
                 </div>
 
                 {/* <div className="card">

@@ -9,7 +9,6 @@ export const metadata: Metadata = {
     title: 'Abogados Ss&Cía',
     description: 'The ultimate collection of design-agnostic, flexible and accessible React UI Components.',
     robots: { index: false, follow: false },
-    viewport: { initialScale: 1, width: 'device-width' },
     openGraph: {
         type: 'website',
         title: 'Abogados Ss&Cía',
@@ -22,6 +21,13 @@ export const metadata: Metadata = {
         icon: '/favicon.ico'
     }
 };
+
+export const viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false
+  };
 
 export default function AppLayout({ children }: AppLayoutProps) {
     return <Layout>{children}</Layout>;

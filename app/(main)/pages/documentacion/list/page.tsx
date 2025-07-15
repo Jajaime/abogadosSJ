@@ -19,7 +19,7 @@ import { ProductService } from '../../../../../demo/service/ProductService';
 import { Demo } from '@/types';
 
 /* @todo Used 'as any' for types here. Will fix in next version due to onSelectionChange event type issue. */
-const Crud = () => {
+const Documentacion = () => {
     let emptyProduct: Demo.Product = {
         id: '',
         name: '',
@@ -94,7 +94,7 @@ const Crud = () => {
             <Button
                 label="Generar DOC"
                 icon="pi pi-file-word"
-                className="p-button-primary p-button-sm"
+                className="p-button-help p-button-sm"
                 loading={generatingDoc === rowData.id}
                 onClick={() => handleGenerarDocumento(rowData)}
             />
@@ -114,6 +114,64 @@ const Crud = () => {
     useEffect(() => {
         fetchDemandas();
     }, []);
+
+    // Columna para descargar documentos
+    const descargarBodyTemplate = (rowData: any) => {
+        return (
+            <Button
+                label="Descargar"
+                icon="pi pi-download"
+                className="p-button-success p-button-sm"
+                onClick={() => handleDescargarDocumento(rowData.id)}
+            />
+        );
+    };
+
+    // Función para descargar el documento
+    const handleDescargarDocumento = async (demandaId: string) => {
+        try {
+            const response = await fetch(`/api/download_doc?demandaId=${demandaId}`);
+
+            if (!response.ok) {
+                throw new Error('Error al descargar el documento');
+            }
+
+            // Procesa la respuesta como un blob (archivo binario)
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+
+            // Extrae el nombre del archivo desde el encabezado Content-Disposition
+            const disposition = response.headers.get('Content-Disposition');
+            let filename = 'documento_descargado.docx';
+
+            if (disposition && disposition.includes('filename=')) {
+                const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                if (match != null && match[1]) {
+                    filename = match[1].replace(/['"]/g, ''); // Limpia comillas si las hay
+                }
+            }
+
+            link.download = filename;
+            link.click();
+            link.remove();
+
+            toast.current?.show({
+                severity: 'success',
+                summary: 'Éxito',
+                detail: 'Documento descargado correctamente',
+                life: 3000,
+            });
+        } catch (error) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: (error as any)?.message || 'Error al descargar documento',
+                life: 5000,
+            });
+        }
+    };
 
     /*USUARIOS FINAL*/
     const openNew = () => {
@@ -347,7 +405,7 @@ const Crud = () => {
 
     const header = (
         <div className="flex flex-column md:flex-row md:justify-content-between md:align-items-center">
-            <h5 className="m-0">DEMANDAS</h5>
+            <h5 className="m-0">Documentación</h5>
             <span className="block mt-2 md:mt-0 p-input-icon-left">
                 <i className="pi pi-search" />
                 <InputText type="search" onInput={(e) => setGlobalFilter(e.currentTarget.value)} placeholder="Buscar..." />
@@ -379,8 +437,6 @@ const Crud = () => {
             <div className="col-12">
                 <div className="card">
                     <Toast ref={toast} />
-                    <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate}></Toolbar>
-
                     <DataTable
                         ref={dt}
                         value={demandas}
@@ -401,10 +457,11 @@ const Crud = () => {
                         filterLocale='es'
                     >
                         <Column selectionMode="multiple" headerStyle={{ width: '4rem' }}></Column>
-                        <Column field="nombres" header="Nombres" sortable headerStyle={{ minWidth: '15rem' }}></Column>
+                        <Column field="id" header="Identificador" sortable headerStyle={{ minWidth: '15rem' }}></Column>
+                        <Column field="nombres" header="Nombre" sortable headerStyle={{ minWidth: '15rem' }}></Column>
                         <Column field="run" header="RUN" sortable headerStyle={{ minWidth: '15rem' }}></Column>
                         <Column field="correoElectronico" header="Correo Electrónico" sortable headerStyle={{ minWidth: '15rem' }}></Column>
-                        <Column header="Documento" body={documentoBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
+                        <Column header="Documento" body={descargarBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
                         {/* <Column body={actionBodyTemplate} headerStyle={{ minWidth: '10rem' }}></Column> */}
                     </DataTable>
 
@@ -486,4 +543,4 @@ const Crud = () => {
     );
 };
 
-export default Crud;
+export default Documentacion;

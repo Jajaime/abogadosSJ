@@ -45,6 +45,112 @@ const Usuarios = () => {
     const toast = useRef<Toast>(null);
     const dt = useRef<DataTable<any>>(null);
 
+    // Agrega este estado para controlar la generación de documentos
+    const [generatingDoc, setGeneratingDoc] = useState<string | null>(null);
+
+    // Función para manejar la generación del documento
+    const handleGenerarDocumento = async (usuarioId: string, nombreUsuario: string, emailUsuario: string) => {
+        try {
+            setGeneratingDoc(usuarioId);
+
+            const response = await fetch('/api/generate_doc', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    usuarioId: usuarioId,
+                    nombreArchivo: `Documento_${nombreUsuario}_${new Date().toISOString().slice(0, 10)}.docx`,
+                    nombre_cliente: nombreUsuario,
+                    email: emailUsuario
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                toast.current?.show({
+                    severity: 'success',
+                    summary: 'Éxito',
+                    detail: 'Documento generado y guardado',
+                    life: 3000
+                });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: (error as any)?.message || 'Error al generar documento',
+                life: 5000
+            });
+        } finally {
+            setGeneratingDoc(null);
+        }
+    };
+
+    // Columna de acción para la tabla
+    const documentoBodyTemplate = (rowData: any) => {
+        return (
+            <Button
+                label="Generar DOC"
+                icon="pi pi-file-word"
+                className="p-button-help p-button-sm"
+                loading={generatingDoc === rowData.id}
+                onClick={() => handleGenerarDocumento(rowData.id, rowData.name, rowData.email)}
+            />
+        );
+    };
+
+    // Columna para descargar documentos
+    const descargarBodyTemplate = (rowData: any) => {
+        return (
+            <Button
+                label="Descargar"
+                icon="pi pi-download"
+                className="p-button-help p-button-sm"
+                onClick={() => handleDescargarDocumento(rowData.id)}
+            />
+        );
+    };
+
+    // Función para descargar el documento
+    const handleDescargarDocumento = async (usuarioId: string) => {
+        try {
+            const response = await fetch(`/api/download_doc?usuarioId=${usuarioId}`);
+
+            if (!response.ok) {
+                throw new Error('Error al descargar el documento');
+            }
+
+            // Procesa la respuesta como un blob (archivo binario)
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+
+            // Usa un nombre de archivo predeterminado o dinámico
+            link.download = 'documento_descargado.docx'; // Cambia esto si deseas personalizar el nombre
+            link.click();
+            link.remove();
+
+            toast.current?.show({
+                severity: 'success',
+                summary: 'Éxito',
+                detail: 'Documento descargado correctamente',
+                life: 3000,
+            });
+        } catch (error) {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Error',
+                detail: (error as any)?.message || 'Error al descargar documento',
+                life: 5000,
+            });
+        }
+    };
+
+
+
     useEffect(() => {
         ProductService.getProducts().then((data) => setProducts(data as any));
     }, []);
@@ -387,7 +493,13 @@ const Usuarios = () => {
                         <Column field="email" header="Correo Electrónico" sortable headerStyle={{ minWidth: '15rem' }}></Column>
 
                         {/* ID del Usuario */}
-                        <Column field="createdAt" header="Fecha Creación" body={formatFecha}  sortable headerStyle={{ minWidth: '15rem' }}></Column>
+                        <Column field="createdAt" header="Fecha Creación" body={formatFecha} sortable headerStyle={{ minWidth: '15rem' }}></Column>
+
+                        <Column header="Documento" body={documentoBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
+
+                        <Column header="Descargar" body={descargarBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
+
+                        {/* Columna de acciones */}
                     </DataTable>
 
                     <Dialog visible={productDialog} style={{ width: '450px' }} header="Product Details" modal className="p-fluid" footer={productDialogFooter} onHide={hideDialog}>

@@ -31,11 +31,11 @@ model Demanda {
   fechaNacimiento    DateTime
   correoElectronico  String   @unique
   nombreRazonSocial   String
-  rutRazonSocial      String   @unique
+  rutRazonSocial      String
   domicilioRazonSocial String
   representanteLegal  String
   runRepresentanteLegal String
-  fechaInicioRelacionLaboral DateTime
+  fechaInicioRelacionLaboral DateTime?
   naturalezaContrato         String
   funciones                  String
   lugar                      String
@@ -51,7 +51,7 @@ model Demanda {
   vacaciones                 Float?
   fuero                      String
   demandadoSolidario DemandadoSolidario[]
-  fechaTerminoRelaLaboral      DateTime  @db.Date
+  fechaTerminoRelaLaboral      DateTime?
   motivoTermino                String
   tipoDespido                  String
   despidoDisciplinario         String
@@ -71,4 +71,20 @@ model DemandadoSolidario {
   domicilio             String
   demandaId             Int      // Relación con la demanda
   demanda               Demanda  @relation(fields: [demandaId], references: [id])
+}
+
+model Documento {
+  id        String   @id @default(uuid())
+  nombre    String
+  contenido Bytes
+  usuarioId String
+  tamaño    Int
+}
+
+model DemandaDocumento {
+  id        String   @id @default(uuid())
+  nombre    String
+  contenido Bytes
+  demandaId String
+  tamaño    Int
 }
