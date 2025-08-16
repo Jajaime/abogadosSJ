@@ -6,7 +6,6 @@ import {
     BreadcrumbItem,
     MenuProps,
     MenuModel,
-    AppSubMenuProps,
     LayoutConfig,
     LayoutState,
     AppBreadcrumbState,
@@ -23,7 +22,8 @@ import {
     AppMenuItemProps,
     AppMenuItem
 } from './layout';
-import { Demo, LayoutType, SortOrderType, CustomEvent, ChartDataState, ChartOptionsState, AppMailSidebarItem, AppMailReplyProps, AppMailProps } from './demo';
+
+import { DemandadoSolDTO, DemandaDTO } from './demanda';
 
 type ChildContainerProps = {
     children: ReactNode;
@@ -49,14 +49,7 @@ export type {
     AppTopbarRef,
     AppMenuItemProps,
     ChildContainerProps,
-    Demo,
-    LayoutType,
-    SortOrderType,
-    CustomEvent,
-    ChartDataState,
-    ChartOptionsState,
-    AppMailSidebarItem,
-    AppMailReplyProps,
-    AppMailProps,
+    DemandadoSol,
+    Demanda,
     AppMenuItem
 };

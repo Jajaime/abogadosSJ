@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,77 +8,77 @@ datasource db {
 }
 
 model Usuario {
-  id       String  @id @default(uuid())
-  email    String  @unique
-  name     String?
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
   createdAt DateTime @default(now())
 }
 
 model Demanda {
-  id                 Int      @id @default(autoincrement())
-  nombres            String
-  apPaterno          String
-  apMaterno          String
-  run                String   @unique
-  nacionalidad       String
-  estadoCivil        String
-  fechaNacimiento    DateTime
-  correoElectronico  String   @unique
-  nombreRazonSocial   String
-  rutRazonSocial      String
-  domicilioRazonSocial String
-  representanteLegal  String
-  runRepresentanteLegal String
+  id                         Int                  @id @default(autoincrement())
+  nombres                    String
+  apPaterno                  String
+  apMaterno                  String
+  run                        String               @unique
+  nacionalidad               String
+  estadoCivil                String
+  fechaNacimiento            DateTime
+  correoElectronico          String               @unique
+  nombreRazonSocial          String
+  rutRazonSocial             String
+  domicilioRazonSocial       String
+  representanteLegal         String
+  runRepresentanteLegal      String
   fechaInicioRelacionLaboral DateTime?
   naturalezaContrato         String
   funciones                  String
   lugar                      String
   jornada                    String
-  otraJornada                String?  // Opcional si 'jornada' es 'otra especificar'
-  registroAsistencia         String   // 'Sí' o 'No'
+  otraJornada                String?
+  registroAsistencia         Boolean
   remuneracion               Float?
   formaPago                  String
-  liquidacionSueldo          String   // 'Sí' o 'No'
-  cotizacionSalud            String
-  cotizacionAfp              String
-  cotizacionAfc              String
+  liquidacionSueldo          Boolean
+  cotizacionSalud            Boolean
+  cotizacionAfp              Boolean
+  cotizacionAfc              Boolean
   vacaciones                 Float?
   fuero                      String
-  demandadoSolidario DemandadoSolidario[]
-  fechaTerminoRelaLaboral      DateTime?
-  motivoTermino                String
-  tipoDespido                  String
-  despidoDisciplinario         String
-  otroDespidoDisciplinario     String?
-  anosServicios                Boolean
-  mesAviso                    Boolean
-  finiquito                   Boolean
-  prestacionesAdeudadas        String
-  createdAt                   DateTime  @default(now())
-  updatedAt                   DateTime  @updatedAt
+  fechaTerminoRelaLaboral    DateTime?
+  motivoTermino              String
+  tipoDespido                String
+  despidoDisciplinario       String
+  otroDespidoDisciplinario   String?
+  anosServicios              Boolean
+  mesAviso                   Boolean
+  finiquito                  Boolean
+  prestacionesAdeudadas      String[]
+  createdAt                  DateTime             @default(now())
+  updatedAt                  DateTime             @updatedAt
+  demandadoSolidario         DemandadoSolidario[]
 }
 
 model DemandadoSolidario {
-  id                    Int      @id @default(autoincrement())
-  nombreRazonSocial     String
-  rut                   String   @unique
-  domicilio             String
-  demandaId             Int      // Relación con la demanda
-  demanda               Demanda  @relation(fields: [demandaId], references: [id])
+  id                Int     @id @default(autoincrement())
+  nombreRazonSocial String
+  rut               String  @unique
+  domicilio         String
+  demandaId         Int
+  demanda           Demanda @relation(fields: [demandaId], references: [id])
 }
 
 model Documento {
-  id        String   @id @default(uuid())
+  id        String @id @default(uuid())
   nombre    String
   contenido Bytes
   usuarioId String
-  tamaño    Int
+  tamano   Int
 }
 
 model DemandaDocumento {
-  id        String   @id @default(uuid())
+  id        String @id @default(uuid())
   nombre    String
   contenido Bytes
   demandaId String
-  tamaño    Int
+  tamano   Int
 }

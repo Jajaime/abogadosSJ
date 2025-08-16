@@ -11,7 +11,7 @@ import { Toolbar } from 'primereact/toolbar';
 import { DataTable } from 'primereact/datatable';
 import { Toast } from 'primereact/toast';
 import { DemandadoSolService } from '../../../../demo/service/DemandadoSolService';
-import { Demo } from '@/types';
+import { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
 import { Dialog } from 'primereact/dialog';
 import { classNames } from 'primereact/utils';
 import { Column } from 'primereact/column';
@@ -54,18 +54,18 @@ const DemandaPage = () => {
         null
     );
 
-    let emptyDemnadadoSol: Demo.DemandadoSol = {
+    let emptyDemnadadoSol: DemandadoSolDTO = {
         id: '',
         nombre: '',
         rut: '',
         domicilio: '',
     };
 
-    const [demandadoSols, setDemandadoSols] = useState(null);
+    const [demandadoSols, setDemandadoSols] = useState<DemandadoSolDTO[]>([]);
     const [demandadoSolDialog, setDemandadoSolDialog] = useState(false);
     const [deleteDemanadoSolDialog, setDeleteDemandadoSolDialog] = useState(false);
     const [deleteDemanadoSolsDialog, setDeleteDemanadoSolsDialog] = useState(false);
-    const [demandadoSol, setDemandadoSol] = useState<Demo.DemandadoSol>(emptyDemnadadoSol);
+    const [demandadoSol, setDemandadoSol] = useState<DemandadoSolDTO>(emptyDemnadadoSol);
     const [selectedDemandadoSols, setSelectedDemandadoSols] = useState(null);
     const [submitted, setSubmitted] = useState(false);
     const [globalFilter, setGlobalFilter] = useState('');
@@ -77,50 +77,168 @@ const DemandaPage = () => {
     const [radioValueMesAviso, setRadioValueMesAviso] = useState(null);
     const [radioValueFiniquito, setRadioValueFiniquito] = useState(null);
 
-    const [formData, setFormData] = useState<{
-        nombres: string;
-        apPaterno: string;
-        apMaterno: string;
-        run: string;
-        fechaNacimiento: string;
-        nacionalidad: string;
-        correoElectronico: string;
-        estadoCivil: string;
-    }>({
-        nombres: "", apPaterno: "", apMaterno: "", run: "", fechaNacimiento: "", nacionalidad: "", correoElectronico: "", estadoCivil: ""
+    const [formData, setFormData] = useState<DemandaDTO>({
+        // Datos del cliente demandante
+        nombres: '',
+        apPaterno: '',
+        apMaterno: '',
+        run: '',
+        fechaNacimiento: '',
+        nacionalidad: '',
+        correoElectronico: '',
+        estadoCivil: '',
+
+        // Demandados solidarios
+        demandadoSols: [],
+
+        // Demandado principal
+        nombreRazonSocial: '',
+        rutRazonSocial: '',
+        domicilioRazonSocial: '',
+        representanteLegal: '',
+        runRepresentanteLegal: '',
+
+        // Relación laboral
+        fechaInicioRelacionLaboral: '',
+        naturalezaContrato: '',
+        funciones: '',
+        lugar: '',
+        jornada: '',
+        otraJornada: '',
+        registroAsistencia: false,
+        remuneracion: 0,
+        formaPago: '',
+        liquidacionSueldo: false,
+        cotizacionSalud: false,
+        cotizacionAfp: false,
+        cotizacionAfc: false,
+        vacaciones: 0,
+        fuero: '',
+
+        // Término de relación laboral
+        fechaTerminoRelaLaboral: '',
+        motivoTermino: '',
+        tipoDespido: '',
+        despidoDisciplinario: '',
+        otroDespidoDisciplinario: '',
+        anosServicios: false,
+        mesAviso: false,
+        finiquito: false,
+        prestacionesAdeudadas: []
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement> | { target: { name: string, value: any } }) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData((prev: DemandaDTO) => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Verifica el contenido de formData
-        console.log("Enviando datos:", formData);
+        const stringToBoolean = (value: string | null): boolean => value === "Sí";
+
+        console.log("Form Data:", formData);
+        console.log("Demandado Solds:", demandadoSols.length);
+        console.log("Demandado Solds:", demandadoSols);
+
+        // ✅ Validación: al menos un demandado solidario
+        if (demandadoSols.length === 0) {
+            alert("Debe agregar al menos un Demandado Solidario.");
+            return;
+        }
+
+        const prestacionesNombres = dropdownItemPrestacionesAdeudada.map((item) => item.name);
+
+        console.log("Prestaciones Adeudadas:", prestacionesNombres);
+
+        const fullFormData: DemandaDTO = {
+            ...formData,
+            demandadoSols: demandadoSols,
+            registroAsistencia: stringToBoolean(radioValueRegAsistencia),
+            liquidacionSueldo: stringToBoolean(radioValueLiquidacionSueldo),
+            pagoAnosServicios: stringToBoolean(radioValueAnosServicio),
+            pagoMesAviso: stringToBoolean(radioValueMesAviso),
+            finiquito: stringToBoolean(radioValueFiniquito),
+            prestacionesAdeudadas: prestacionesNombres
+        };
 
         const response = await fetch("/api/demandas", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(formData),
+            body: JSON.stringify(fullFormData),
         });
 
         if (response.ok) {
             alert("Demanda registrada exitosamente");
+
             setFormData({
-                nombres: "", apPaterno: "", apMaterno: "", run: "", fechaNacimiento: "", nacionalidad: "", correoElectronico: "", estadoCivil: ""
+                // Datos del cliente
+                nombres: '',
+                apPaterno: '',
+                apMaterno: '',
+                run: '',
+                fechaNacimiento: '',
+                nacionalidad: '',
+                correoElectronico: '',
+                estadoCivil: '',
+
+                // Demandados solidarios
+                demandadoSols: [],
+
+                // Demandado principal
+                nombreRazonSocial: '',
+                rutRazonSocial: '',
+                domicilioRazonSocial: '',
+                representanteLegal: '',
+                runRepresentanteLegal: '',
+
+                // Relación laboral
+                fechaInicioRelacionLaboral: '',
+                naturalezaContrato: '',
+                funciones: '',
+                lugar: '',
+                jornada: '',
+                otraJornada: '',
+                registroAsistencia: false,
+                remuneracion: 0,
+                formaPago: '',
+                liquidacionSueldo: false,
+                cotizacionSalud: false,
+                cotizacionAfp: false,
+                cotizacionAfc: false,
+                vacaciones: 0,
+                fuero: '',
+
+                // Término relación laboral
+                fechaTerminoRelaLaboral: '',
+                motivoTermino: '',
+                tipoDespido: '',
+                despidoDisciplinario: '',
+                otroDespidoDisciplinario: '',
+                anosServicios: false,
+                mesAviso: false,
+                finiquito: false,
+                prestacionesAdeudadas: []
             });
-            router.push('/pages/demanda/list'); // Navega a la ruta específica
+            setRadioValueRegAsistencia(null);
+            setRadioValueLiquidacionSueldo(null);
+            setRadioValueAnosServicio(null);
+            setRadioValueMesAviso(null);
+            setRadioValueFiniquito(null);
+            setDemandadoSols([]);
+            router.push('/pages/demanda/list');
         } else {
             alert("Error al registrar la demanda");
         }
     };
 
-    useEffect(() => {
+
+    /*useEffect(() => {
         DemandadoSolService.getDemandadoSols().then((data) => setDemandadoSols(data as any));
-    }, []);
+    }, []);*/
 
     const hideDialog = () => {
         setSubmitted(false);
@@ -449,41 +567,31 @@ const DemandaPage = () => {
         );
     };
 
-    const toolbarLeftTemplate = () => {
-        return (
-            <>
-                <Button label="Agregar" icon="pi pi-plus" style={{ marginRight: '.5em' }} />
-
-                <i className="pi pi-bars p-toolbar-separator" style={{ marginRight: '.5em' }}></i>
-
-                <Button icon="pi pi-pencil" severity="warning" style={{ marginRight: '.5em' }} />
-                <Button icon="pi pi-trash" severity="danger" style={{ marginRight: '.5em' }} />
-            </>
-        );
-    };
+    const toolbarLeftTemplate = () => (
+        <>
+            <Button
+                label="Agregar"
+                icon="pi pi-plus"
+                onClick={() => {
+                    setDemandadoSol({ id: '', nombre: '', rut: '', domicilio: '' });
+                    setDemandadoSolDialog(true);
+                }}
+                style={{ marginRight: '.5em' }}
+            />
+            <Button icon="pi pi-pencil" disabled severity="warning" style={{ marginRight: '.5em' }} />
+            <Button icon="pi pi-trash" disabled severity="danger" style={{ marginRight: '.5em' }} />
+        </>
+    );
 
     const saveDemandadoSol = () => {
         setSubmitted(true);
 
-        // Verificamos que el campo 'rut' no esté vacío
-        if (demandadoSol.rut.trim()) {
-            let _demandadoSols = [...(demandadoSols as any)];
-            let _demandadoSol = { ...demandadoSol };
+        if (demandadoSol.nombre?.trim() && demandadoSol.rut?.trim() && demandadoSol.domicilio?.trim()) {
+            const _demandadoSols = [...demandadoSols];
+            const _demandadoSol = { ...demandadoSol };
 
-            if (demandadoSol.id) {
-                // Si existe un id, actualizamos el demandado existente
-                const index = findIndexById(demandadoSol.id);
-                _demandadoSols[index] = _demandadoSol;
-
-                toast.current?.show({
-                    severity: 'success',
-                    summary: 'Éxito',
-                    detail: 'Demandado Actualizado',
-                    life: 3000
-                });
-            } else {
-                // Si no existe id, creamos un nuevo demandado
-                _demandadoSol.id = createId(); // Asignar un nuevo ID
+            if (!_demandadoSol.id) {
+                _demandadoSol.id = crypto.randomUUID(); // o usa createId() si lo prefieres
                 _demandadoSols.push(_demandadoSol);
 
                 toast.current?.show({
@@ -492,14 +600,26 @@ const DemandaPage = () => {
                     detail: 'Demandado Creado',
                     life: 3000
                 });
+            } else {
+                const index = _demandadoSols.findIndex(d => d.id === _demandadoSol.id);
+                if (index !== -1) {
+                    _demandadoSols[index] = _demandadoSol;
+
+                    toast.current?.show({
+                        severity: 'success',
+                        summary: 'Éxito',
+                        detail: 'Demandado Actualizado',
+                        life: 3000
+                    });
+                }
             }
 
-            // Actualizamos el estado con la lista de demandados
-            setDemandadoSols(_demandadoSols as any);
-            setDemandadoSolDialog(false); // Cerrar el diálogo de creación/edición
-            setDemandadoSol(emptyDemnadadoSol); // Reiniciar el formulario
+            setDemandadoSols(_demandadoSols);
+            setDemandadoSolDialog(false);
+            setDemandadoSol({ id: '', nombre: '', rut: '', domicilio: '' }); // o emptyDemandadoSol si prefieres
         }
     };
+
 
     const findIndexById = (id: string) => {
         let index = -1;
@@ -533,12 +653,12 @@ const DemandaPage = () => {
 
     const demandadoSolDialogFooter = (
         <>
-            <Button label="Cancel" icon="pi pi-times" text onClick={hideDialog} />
-            <Button label="Save" icon="pi pi-check" text onClick={saveDemandadoSol} />
+            <Button label="Cancelar" icon="pi pi-times" text onClick={hideDialog} />
+            <Button label="Guardar" icon="pi pi-check" text onClick={saveDemandadoSol} />
         </>
     );
 
-    const nombreBodyTemplate = (rowData: Demo.DemandadoSol) => {
+    const nombreBodyTemplate = (rowData: DemandadoSolDTO) => {
         return (
             <>
                 <span className="p-column-title">Nombre Razón Social de Empresa</span>
@@ -547,7 +667,7 @@ const DemandaPage = () => {
         );
     };
 
-    const rutBodyTemplate = (rowData: Demo.DemandadoSol) => {
+    const rutBodyTemplate = (rowData: DemandadoSolDTO) => {
         return (
             <>
                 <span className="p-column-title">RUT</span>
@@ -556,7 +676,7 @@ const DemandaPage = () => {
         );
     };
 
-    const domicilioBodyTemplate = (rowData: Demo.DemandadoSol) => {
+    const domicilioBodyTemplate = (rowData: DemandadoSolDTO) => {
         return (
             <>
                 <span className="p-column-title">Domicilio</span>
@@ -565,17 +685,17 @@ const DemandaPage = () => {
         );
     };
 
-    const editDemandadoSol = (DemandadoSol: Demo.DemandadoSol) => {
+    const editDemandadoSol = (DemandadoSol: DemandadoSolDTO) => {
         setDemandadoSol({ ...DemandadoSol });
         setDemandadoSolDialog(true);
     };
 
-    const confirmDeleteDemandadoSol = (DemandadoSol: Demo.DemandadoSol) => {
+    const confirmDeleteDemandadoSol = (DemandadoSol: DemandadoSolDTO) => {
         setDemandadoSol(DemandadoSol);
         setDeleteDemandadoSolDialog(true);
     };
 
-    const actionBodyTemplate = (rowData: Demo.DemandadoSol) => {
+    const actionBodyTemplate = (rowData: DemandadoSolDTO) => {
         return (
             <>
                 <Button icon="pi pi-pencil" rounded severity="success" className="mr-2" onClick={() => editDemandadoSol(rowData)} />
@@ -827,6 +947,15 @@ const DemandaPage = () => {
                         <InputText
                             id="nombreRazonSocial"
                             type="text"
+                            value={formData.nombreRazonSocial}
+                            onChange={(e) =>
+                                handleChange({
+                                    target: {
+                                        name: 'nombreRazonSocial',
+                                        value: e.target.value
+                                    }
+                                })
+                            }
                             placeholder='Ingrese el Nombre Razón Social de Empresa' />
                     </div>
                     <div className="field">
@@ -834,6 +963,15 @@ const DemandaPage = () => {
                         <InputText
                             id="rutRazonSocial"
                             type="text"
+                            value={formData.rutRazonSocial}
+                            onChange={(e) =>
+                                handleChange({
+                                    target: {
+                                        name: 'rutRazonSocial',
+                                        value: e.target.value
+                                    }
+                                })
+                            }
                             placeholder='Ingrese rut' />
                     </div>
                     <div className="field">
@@ -841,6 +979,15 @@ const DemandaPage = () => {
                         <InputText
                             id="domicilioRazonSocial"
                             type="text"
+                            value={formData.domicilioRazonSocial}
+                            onChange={(e) =>
+                                handleChange({
+                                    target: {
+                                        name: 'domicilioRazonSocial',
+                                        value: e.target.value
+                                    }
+                                })
+                            }
                             placeholder='Ingrese domicilio' />
                     </div>
                     <div className="field">
@@ -848,13 +995,31 @@ const DemandaPage = () => {
                         <InputText
                             id="representanteLegal"
                             type="text"
+                            value={formData.representanteLegal}
+                            onChange={(e) =>
+                                handleChange({
+                                    target: {
+                                        name: 'representanteLegal',
+                                        value: e.target.value
+                                    }
+                                })
+                            }
                             placeholder='Ingrese nombre del representante legal' />
                     </div>
                     <div className="field">
-                        <label htmlFor="run">Rut Representante Legal</label>
+                        <label htmlFor="runRepresentanteLegal">Rut Representante Legal</label>
                         <InputText
-                            id="run"
+                            id="runRepresentanteLegal"
                             type="text"
+                            value={formData.runRepresentanteLegal}
+                            onChange={(e) =>
+                                handleChange({
+                                    target: {
+                                        name: 'runRepresentanteLegal',
+                                        value: e.target.value
+                                    }
+                                })
+                            }
                             placeholder='Ingrese Rut del representante legal' />
                     </div>
                 </div>
@@ -944,9 +1109,16 @@ const DemandaPage = () => {
                                 id="fechaRelaLaboral"
                                 showIcon
                                 showButtonBar
-                                value={calendarValueRLab}
+                                value={formData.fechaInicioRelacionLaboral ? new Date(formData.fechaInicioRelacionLaboral) : null}
                                 dateFormat='dd/mm/yy'
-                                onChange={(e) => setCalendarValueRLab(e.value ?? null)}
+                                onChange={(e) =>
+                                    handleChange({
+                                        target: {
+                                            name: 'fechaRelaLaboral',
+                                            value: e.value ?? null
+                                        }
+                                    })
+                                }
                                 placeholder='dd/mm/yyyy'
                                 locale='es' />
                         </div>
@@ -965,6 +1137,15 @@ const DemandaPage = () => {
                             <label htmlFor="funciones">Funciones</label>
                             <InputTextarea
                                 id="funciones"
+                                value={formData.funciones}
+                                onChange={(e) =>
+                                    handleChange({
+                                        target: {
+                                            name: 'funciones',
+                                            value: e.target.value
+                                        }
+                                    })
+                                }
                                 placeholder="Ingrese sus funciones"
                                 rows={5}
                                 cols={30}
@@ -975,6 +1156,15 @@ const DemandaPage = () => {
                             <InputText
                                 id="lugar"
                                 type="text"
+                                value={formData.lugar}
+                                onChange={(e) =>
+                                    handleChange({
+                                        target: {
+                                            name: 'lugar',
+                                            value: e.target.value
+                                        }
+                                    })
+                                }
                                 placeholder='Domicilio dónde trabajó' />
                         </div>
                         <div className="field col-12 md:col-4">
@@ -994,6 +1184,15 @@ const DemandaPage = () => {
                                 <InputText
                                     id="otraJornada"
                                     type="text"
+                                    value={formData.otraJornada}
+                                    onChange={(e) =>
+                                        handleChange({
+                                            target: {
+                                                name: 'otraJornada',
+                                                value: e.target.value
+                                            }
+                                        })
+                                    }
                                     placeholder='Especificar otra jornada' />
                             </div>
                         )}
@@ -1023,12 +1222,18 @@ const DemandaPage = () => {
                         <div className="field col-12 md:col-4">
                             <label htmlFor="remuneracion">Remuneración</label>
                             <InputNumber
-                                value={inputNumberValueRemuneracion}
-                                onValueChange={(e) =>
-                                    setInputNumberValueRemuneracion(e.value ?? null)
-                                }
+                                id="remuneracion"
                                 mode="decimal"
                                 placeholder='especificar monto'
+                                value={formData.remuneracion}
+                                onValueChange={(e) =>
+                                    handleChange({
+                                        target: {
+                                            name: 'remuneracion',
+                                            value: e.value ?? null
+                                        }
+                                    })
+                                }
                             ></InputNumber>
                         </div>
                         <div className="field col-12 md:col-4">
@@ -1068,7 +1273,7 @@ const DemandaPage = () => {
                         <div className="field col-12 md:col-4">
                             <label htmlFor="cotizacionSalud">Cotizaciones de Salud</label>
                             <Dropdown
-                                id="cotizaciones"
+                                id="cotizacionSalud"
                                 value={dropdownItemCotizacionSalud}
                                 onChange={(e) => setDropdownItemCotizacionSalud(e.value)}
                                 options={dropdownItemsCotizacionSaluds}
@@ -1108,9 +1313,15 @@ const DemandaPage = () => {
                         <div className="field col-12 md:col-4">
                             <label htmlFor="vacaciones">Vacaciones</label>
                             <InputNumber
-                                value={inputNumberValueVacaciones}
+                                id="vacaciones"
+                                value={formData.vacaciones}
                                 onValueChange={(e) =>
-                                    setInputNumberValueVacaciones(e.value ?? null)
+                                    handleChange({
+                                        target: {
+                                            name: 'vacaciones',
+                                            value: e.value ?? null
+                                        }
+                                    })
                                 }
                                 showButtons
                                 tooltip="Meses sin tener vacaciones"
@@ -1142,9 +1353,16 @@ const DemandaPage = () => {
                                 id="fechaTerminoRelaLaboral"
                                 showIcon
                                 showButtonBar
-                                value={calendarValueRTerLab}
+                                value={formData.fechaTerminoRelaLaboral ? new Date(formData.fechaTerminoRelaLaboral) : null}
                                 dateFormat='dd/mm/yy'
-                                onChange={(e) => setCalendarValueRTerLab(e.value ?? null)}
+                                onChange={(e) =>
+                                    handleChange({
+                                        target: {
+                                            name: 'fechaTerminoRelaLaboral',
+                                            value: e.value ?? null
+                                        }
+                                    })
+                                }
                                 placeholder='dd/mm/yyyy'
                                 locale='es' />
                         </div>
@@ -1193,6 +1411,15 @@ const DemandaPage = () => {
                                 <InputText
                                     id="otroDespidoDisciplinario"
                                     type="text"
+                                    value={formData.otroDespidoDisciplinario}
+                                    onChange={(e) =>
+                                        handleChange({
+                                            target: {
+                                                name: 'otroDespidoDisciplinario',
+                                                value: e.target.value
+                                            }
+                                        })
+                                    }
                                     placeholder='Especificar otra motivo' />
                             </div>
                         )}
