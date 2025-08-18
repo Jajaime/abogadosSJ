@@ -1,1525 +1,346 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { Dropdown } from 'primereact/dropdown';
+
 import { Button } from 'primereact/button';
-import { Messages } from 'primereact/messages';
-import { Calendar } from "primereact/calendar";
-import { Toolbar } from 'primereact/toolbar';
-import { DataTable } from 'primereact/datatable';
-import { Toast } from 'primereact/toast';
-import { DemandadoSolService } from '../../../../demo/service/DemandadoSolService';
-import { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
-import { Dialog } from 'primereact/dialog';
-import { classNames } from 'primereact/utils';
 import { Column } from 'primereact/column';
-import { RadioButton, RadioButtonChangeEvent } from 'primereact/radiobutton';
-import { InputNumber } from "primereact/inputnumber";
-import { MultiSelect } from 'primereact/multiselect';
+import { DataTable } from 'primereact/datatable';
+import { Dialog } from 'primereact/dialog';
+import { InputText } from 'primereact/inputtext';
+import { Toast } from 'primereact/toast';
+import { Toolbar } from 'primereact/toolbar';
 
-
-interface DropdownItem {
-    name: string;
-    code: string;
+export interface DemandadoSolDTO {
+  id: string;
+  nombre: string;
+  rut: string;
+  domicilio: string;
 }
 
-const DemandaPage = () => {
+export interface DemandaDTO {
+  id: string;
+  // Cliente
+  nombres: string;
+  apPaterno?: string;
+  apMaterno?: string;
+  run: string;
+  correoElectronico?: string;
+  // …
+  demandadoSols?: DemandadoSolDTO[];
+  createdAt?: string; // ISO opcional
+}
 
-    const router = useRouter();
+export default function DemandasPage() {
+  const router = useRouter();
 
-    const [dropdownItemMateria, setDropdownItemMateria] = useState<DropdownItem | null>(null);
-    const [dropdownItemNacionalidad, setDropdownItemNacionalidad] = useState<DropdownItem | null>(null);
-    const [dropdownItemNatuContrato, setDropdownItemNatuContrato] = useState<DropdownItem | null>(null);
-    const [dropdownItemEstadoCivil, setDropdownItemEstadoCivil] = useState<DropdownItem | null>(null);
-    const [dropdownItemJornadaLab, setDropdownItemJornadaLab] = useState<DropdownItem | null>(null);
-    const [dropdownItemFormaPago, setDropdownItemFormaPago] = useState<DropdownItem | null>(null);
-    const [dropdownItemFuero, setDropdownItemFuero] = useState<DropdownItem | null>(null);
-    const [dropdownItemMotivoTermino, setDropdownItemMotivoTermino] = useState<DropdownItem | null>(null);
-    const [dropdownItemCotizacionSalud, setDropdownItemCotizacionSalud] = useState<DropdownItem | null>(null);
-    const [dropdownItemCotizacionAfp, setDropdownItemCotizacionAfp] = useState<DropdownItem | null>(null);
-    const [dropdownItemCotizacionAfc, setDropdownItemCotizacionAfc] = useState<DropdownItem | null>(null);
-    const [dropdownItemDespidoDisciplinario, setDropdownItemDespidoDisciplinario] = useState<DropdownItem | null>(null);
-    const [dropdownItemTipoDespido, setDropdownItemTipoDespido] = useState<DropdownItem | null>(null);
-    const [dropdownItemPrestacionesAdeudada, setDropdownItemPrestacionesAdeudada] = useState<DropdownItem[]>([]);
-    const [generatedButtons, setGeneratedButtons] = useState<DropdownItem[]>([]);
-    const message = useRef<Messages>(null);
-    const [calendarValueFNac, setCalendarValueFNac] = useState<any>(null);
-    const [calendarValueRLab, setCalendarValueRLab] = useState<any>(null);
-    const [calendarValueRTerLab, setCalendarValueRTerLab] = useState<any>(null);
-    const [inputNumberValueRemuneracion, setInputNumberValueRemuneracion] = useState<number | null>(
-        null
-    ); const [inputNumberValueVacaciones, setInputNumberValueVacaciones] = useState<number | null>(
-        null
-    );
+  // Tabla
+  const [demandas, setDemandas] = useState<DemandaDTO[]>([]);
+  const [selectedDemandas, setSelectedDemandas] = useState<DemandaDTO[] | null>(null);
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const dt = useRef<DataTable<any>>(null);
 
-    let emptyDemnadadoSol: DemandadoSolDTO = {
-        id: '',
-        nombre: '',
-        rut: '',
-        domicilio: '',
-    };
+  // Toast & diálogos
+  const toast = useRef<Toast>(null);
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [deleteManyDialogVisible, setDeleteManyDialogVisible] = useState(false);
+  const [demandaToDelete, setDemandaToDelete] = useState<DemandaDTO | null>(null);
 
-    const [demandadoSols, setDemandadoSols] = useState<DemandadoSolDTO[]>([]);
-    const [demandadoSolDialog, setDemandadoSolDialog] = useState(false);
-    const [deleteDemanadoSolDialog, setDeleteDemandadoSolDialog] = useState(false);
-    const [deleteDemanadoSolsDialog, setDeleteDemanadoSolsDialog] = useState(false);
-    const [demandadoSol, setDemandadoSol] = useState<DemandadoSolDTO>(emptyDemnadadoSol);
-    const [selectedDemandadoSols, setSelectedDemandadoSols] = useState(null);
-    const [submitted, setSubmitted] = useState(false);
-    const [globalFilter, setGlobalFilter] = useState('');
-    const toast = useRef<Toast>(null);
-    const dtDemandadoSol = useRef<DataTable<any>>(null);
-    const [radioValueRegAsistencia, setRadioValueRegAsistencia] = useState(null);
-    const [radioValueLiquidacionSueldo, setRadioValueLiquidacionSueldo] = useState(null);
-    const [radioValueAnosServicio, setRadioValueAnosServicio] = useState(null);
-    const [radioValueMesAviso, setRadioValueMesAviso] = useState(null);
-    const [radioValueFiniquito, setRadioValueFiniquito] = useState(null);
+  // Generar/descargar documentos
+  const [generatingDoc, setGeneratingDoc] = useState<string | null>(null);
 
-    const [formData, setFormData] = useState<DemandaDTO>({
-        // Datos del cliente demandante
-        nombres: '',
-        apPaterno: '',
-        apMaterno: '',
-        run: '',
-        fechaNacimiento: '',
-        nacionalidad: '',
-        correoElectronico: '',
-        estadoCivil: '',
+  // ====== Fetch ======
+  const fetchDemandas = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/demandas', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: DemandaDTO[] = await res.json();
+      setDemandas(data ?? []);
+    } catch (e: any) {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: e?.message || 'No se pudo cargar la lista', life: 5000 });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        // Demandados solidarios
-        demandadoSols: [],
+  useEffect(() => {
+    const raw = sessionStorage.getItem('flashToast');
+  if (raw) {
+    const data = JSON.parse(raw);
+    toast.current?.show(data);
+    sessionStorage.removeItem('flashToast');
+  }
+    fetchDemandas();
+  }, []);
 
-        // Demandado principal
-        nombreRazonSocial: '',
-        rutRazonSocial: '',
-        domicilioRazonSocial: '',
-        representanteLegal: '',
-        runRepresentanteLegal: '',
-
-        // Relación laboral
-        fechaInicioRelacionLaboral: '',
-        naturalezaContrato: '',
-        funciones: '',
-        lugar: '',
-        jornada: '',
-        otraJornada: '',
-        registroAsistencia: false,
-        remuneracion: 0,
-        formaPago: '',
-        liquidacionSueldo: false,
-        cotizacionSalud: false,
-        cotizacionAfp: false,
-        cotizacionAfc: false,
-        vacaciones: 0,
-        fuero: '',
-
-        // Término de relación laboral
-        fechaTerminoRelaLaboral: '',
-        motivoTermino: '',
-        tipoDespido: '',
-        despidoDisciplinario: '',
-        otroDespidoDisciplinario: '',
-        anosServicios: false,
-        mesAviso: false,
-        finiquito: false,
-        prestacionesAdeudadas: []
+  // ====== Helpers ======
+  const formatFecha = (row: DemandaDTO) => {
+    if (!row.createdAt) return '-';
+    const d = new Date(row.createdAt);
+    return d.toLocaleString('es-ES', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false
     });
+  };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement> | { target: { name: string, value: any } }) => {
-        const { name, value } = e.target;
-        setFormData((prev: DemandaDTO) => ({
-            ...prev,
-            [name]: value
-        }));
-    };
+  // ====== Navegación ======
+  const goNew = () => router.push('/pages/demanda/new');
+  const goEdit = (d: DemandaDTO) => router.push(`/pages/demanda/${d.id}/edit`);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+  // ====== Documentos ======
+  const handleGenerarDocumento = async (d: DemandaDTO) => {
+    try {
+      setGeneratingDoc(d.id);
+      const response = await fetch('/api/generate_doc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          demandaId: d.id,
+          nombreArchivo: `Documento_${d.run}_${new Date().toISOString().slice(0, 10)}.docx`,
+          nombre_cliente: d.nombres,
+          run_cliente: d.run
+        })
+      });
+      const result = await response.json();
+      if (!result?.success) throw new Error(result?.error || 'Error al generar documento');
+      toast.current?.show({ severity: 'success', summary: 'Éxito', detail: 'Documento generado y guardado', life: 3000 });
+    } catch (e: any) {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: e?.message || 'Error al generar documento', life: 5000 });
+    } finally {
+      setGeneratingDoc(null);
+    }
+  };
 
-        const stringToBoolean = (value: string | null): boolean => value === "Sí";
+  const handleDescargarDocumento = async (d: DemandaDTO) => {
+    try {
+      const response = await fetch(`/api/download_doc?demandaId=${d.id}`);
+      if (!response.ok) throw new Error('Error al descargar el documento');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `documento_${d.run || d.id}.docx`;
+      link.click();
+      link.remove();
+      toast.current?.show({ severity: 'success', summary: 'Éxito', detail: 'Documento descargado', life: 3000 });
+    } catch (e: any) {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: e?.message || 'No se pudo descargar', life: 5000 });
+    }
+  };
 
-        console.log("Form Data:", formData);
-        console.log("Demandado Solds:", demandadoSols.length);
-        console.log("Demandado Solds:", demandadoSols);
+  const documentoBodyTemplate = (row: DemandaDTO) => (
+    <Button
+      label="Generar DOC"
+      icon="pi pi-file-word"
+      className="p-button-primary p-button-sm"
+      loading={generatingDoc === row.id}
+      onClick={() => handleGenerarDocumento(row)}
+    />
+  );
 
-        // ✅ Validación: al menos un demandado solidario
-        if (demandadoSols.length === 0) {
-            alert("Debe agregar al menos un Demandado Solidario.");
-            return;
-        }
+  const descargarBodyTemplate = (row: DemandaDTO) => (
+    <Button
+      label="Descargar"
+      icon="pi pi-download"
+      className="p-button-help p-button-sm"
+      onClick={() => handleDescargarDocumento(row)}
+    />
+  );
 
-        const prestacionesNombres = dropdownItemPrestacionesAdeudada.map((item) => item.name);
+  // ====== Eliminar (uno) ======
+  const confirmDeleteOne = (d: DemandaDTO) => {
+    setDemandaToDelete(d);
+    setDeleteDialogVisible(true);
+  };
 
-        console.log("Prestaciones Adeudadas:", prestacionesNombres);
+  const deleteOne = async () => {
+    if (!demandaToDelete) return;
+    try {
+      const res = await fetch(`/api/demandas/${demandaToDelete.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const t = await res.text().catch(() => '');
+        throw new Error(t || `Error eliminando demanda`);
+      }
+      toast.current?.show({ severity: 'success', summary: 'Eliminada', detail: 'Demanda eliminada', life: 2500 });
+      await fetchDemandas();
+    } catch (e: any) {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: e?.message || 'No se pudo eliminar', life: 5000 });
+    } finally {
+      setDeleteDialogVisible(false);
+      setDemandaToDelete(null);
+    }
+  };
 
-        const fullFormData: DemandaDTO = {
-            ...formData,
-            demandadoSols: demandadoSols,
-            registroAsistencia: stringToBoolean(radioValueRegAsistencia),
-            liquidacionSueldo: stringToBoolean(radioValueLiquidacionSueldo),
-            pagoAnosServicios: stringToBoolean(radioValueAnosServicio),
-            pagoMesAviso: stringToBoolean(radioValueMesAviso),
-            finiquito: stringToBoolean(radioValueFiniquito),
-            prestacionesAdeudadas: prestacionesNombres
-        };
+  // ====== Eliminar (varias) ======
+  const confirmDeleteSelected = () => {
+    if (!selectedDemandas || selectedDemandas.length === 0) return;
+    setDeleteManyDialogVisible(true);
+  };
 
-        const response = await fetch("/api/demandas", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(fullFormData),
-        });
+  const deleteSelected = async () => {
+    if (!selectedDemandas || selectedDemandas.length === 0) return;
+    try {
+      for (const d of selectedDemandas) {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await fetch(`/api/demandas/${d.id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`No se pudo eliminar id=${d.id}`);
+      }
+      toast.current?.show({ severity: 'success', summary: 'Eliminadas', detail: 'Demandas eliminadas', life: 2500 });
+      setSelectedDemandas(null);
+      await fetchDemandas();
+    } catch (e: any) {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: e?.message || 'No se completó la eliminación', life: 5000 });
+    } finally {
+      setDeleteManyDialogVisible(false);
+    }
+  };
 
-        if (response.ok) {
-            alert("Demanda registrada exitosamente");
+  // ====== Templates UI ======
+  const header = (
+    <div className="flex flex-column md:flex-row md:justify-content-between md:align-items-center">
+      <h5 className="m-0">DEMANDAS</h5>
+      <span className="block mt-2 md:mt-0 p-input-icon-left">
+        <i className="pi pi-search" />
+        <InputText type="search" onInput={(e) => setGlobalFilter(e.currentTarget.value)} placeholder="Buscar..." />
+      </span>
+    </div>
+  );
 
-            setFormData({
-                // Datos del cliente
-                nombres: '',
-                apPaterno: '',
-                apMaterno: '',
-                run: '',
-                fechaNacimiento: '',
-                nacionalidad: '',
-                correoElectronico: '',
-                estadoCivil: '',
+  const leftToolbarTemplate = () => (
+    <div className="my-2 flex gap-2">
+  <Button
+    label="Nueva Demanda"
+    icon="pi pi-plus"
+    severity="success"
+    onClick={goNew}
+  />
 
-                // Demandados solidarios
-                demandadoSols: [],
+  <Button
+    label="Editar Demanda"
+    icon="pi pi-pencil"
+    severity="warning"
+    onClick={() => {
+      if (selectedDemandas && selectedDemandas.length === 1) {
+        const id = selectedDemandas[0].id;
+        router.push(`/pages/demanda/${id}/edit`); // 👈 con /edit al final
+      }
+    }}
+    disabled={!selectedDemandas || selectedDemandas.length !== 1} // solo cuando hay una selección
+  />
 
-                // Demandado principal
-                nombreRazonSocial: '',
-                rutRazonSocial: '',
-                domicilioRazonSocial: '',
-                representanteLegal: '',
-                runRepresentanteLegal: '',
+  <Button
+    label="Eliminar Demanda(s)"
+    icon="pi pi-trash"
+    severity="danger"
+    onClick={confirmDeleteSelected}
+    disabled={!selectedDemandas || selectedDemandas.length === 0}
+  />
+</div>
+  );
 
-                // Relación laboral
-                fechaInicioRelacionLaboral: '',
-                naturalezaContrato: '',
-                funciones: '',
-                lugar: '',
-                jornada: '',
-                otraJornada: '',
-                registroAsistencia: false,
-                remuneracion: 0,
-                formaPago: '',
-                liquidacionSueldo: false,
-                cotizacionSalud: false,
-                cotizacionAfp: false,
-                cotizacionAfc: false,
-                vacaciones: 0,
-                fuero: '',
+  const rightToolbarTemplate = () => <></>;
 
-                // Término relación laboral
-                fechaTerminoRelaLaboral: '',
-                motivoTermino: '',
-                tipoDespido: '',
-                despidoDisciplinario: '',
-                otroDespidoDisciplinario: '',
-                anosServicios: false,
-                mesAviso: false,
-                finiquito: false,
-                prestacionesAdeudadas: []
-            });
-            setRadioValueRegAsistencia(null);
-            setRadioValueLiquidacionSueldo(null);
-            setRadioValueAnosServicio(null);
-            setRadioValueMesAviso(null);
-            setRadioValueFiniquito(null);
-            setDemandadoSols([]);
-            router.push('/pages/demanda/list');
-        } else {
-            alert("Error al registrar la demanda");
-        }
-    };
+  const actionsTemplate = (row: DemandaDTO) => (
+    <div className="flex gap-2">
+      <Button icon="pi pi-pencil" rounded severity="success" onClick={() => goEdit(row)} tooltip="Editar" />
+      <Button icon="pi pi-trash" rounded severity="danger" onClick={() => confirmDeleteOne(row)} tooltip="Eliminar" />
+    </div>
+  );
 
+  // ====== Footers diálogos ======
+  const deleteOneFooter = (
+    <>
+      <Button label="No" icon="pi pi-times" text onClick={() => setDeleteDialogVisible(false)} />
+      <Button label="Sí, eliminar" icon="pi pi-check" text onClick={deleteOne} />
+    </>
+  );
 
-    /*useEffect(() => {
-        DemandadoSolService.getDemandadoSols().then((data) => setDemandadoSols(data as any));
-    }, []);*/
+  const deleteManyFooter = (
+    <>
+      <Button label="No" icon="pi pi-times" text onClick={() => setDeleteManyDialogVisible(false)} />
+      <Button label="Sí, eliminar" icon="pi pi-check" text onClick={deleteSelected} />
+    </>
+  );
 
-    const hideDialog = () => {
-        setSubmitted(false);
-        setDemandadoSolDialog(false);
-    };
+  return (
+    <div className="grid crud-demo">
+      <div className="col-12">
+        <div className="card">
+          <Toast ref={toast} />
+          <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate} />
 
-    const dropdownItemsMateria: DropdownItem[] = useMemo(
-        () => [
-            { name: 'Asignación de colación', code: '1' },
-            { name: 'Asignación  de experiencia', code: '2' },
-            { name: 'Asignación de locomoción', code: '3' },
-            { name: 'Asignación  de pérdida de caja', code: '4' },
-            { name: 'Asignación de perfeccionamiento', code: '5' },
-            { name: 'Asignación desgaste de harramientas', code: '6' },
-            { name: 'Asignación Familia', code: '7' },
-            { name: 'Asignaciónpor desempeño en cond. Difíciles', code: '8' },
-            { name: 'Asignación por responsabilidad', code: '9' },
-            { name: 'Asignacion especiales', code: '10' },
-            { name: 'Bonos', code: '11' },
-            { name: 'Comisiones', code: '12' },
-            { name: 'Costas', code: '13' },
-            { name: 'Cuota Sindical', code: '14' },
-            { name: 'Daño Moral', code: '15' },
-            { name: 'Descanso compensatorio', code: '16' },
-            { name: 'Descanso dominical', code: '17' },
-            { name: 'Despedido indirecto', code: '18' },
-            { name: 'Despido Injustificado', code: '19' },
-            { name: 'Feriado Legal', code: '20' },
-            { name: 'Feriado Progresivo', code: '21' },
-            { name: 'Feriado Proporcional', code: '22' },
-            { name: 'Fuero maternal', code: '23' },
-            { name: 'Fuero sindical', code: '24' },
-            { name: 'Gratificaciones legales', code: '25' },
-            { name: 'Horas Extras', code: '26' },
-            { name: 'Indemnización convencional', code: '27' },
-            { name: 'Indemnización de trabajadora de casa particular', code: '28' },
-            { name: 'Indemnización del artículo 87 del Estatuto Docente', code: '29' },
-            { name: 'Indemnización por años de servicios', code: '30' },
-            { name: 'Indemnización sustitutiva de aviso previo', code: '31' },
-            { name: 'Multa', code: '32' },
-            { name: 'Nulidad de despido', code: '33' },
-            { name: 'Otras Gratificaciones', code: '34' },
-            { name: 'Otras Indemnizaciones', code: '35' },
-            { name: 'Participación', code: '36' },
-            { name: 'Prestaciones', code: '37' },
-            { name: 'Recálculo de pensiones', code: '38' },
-            { name: 'Recargos', code: '39' },
-            { name: 'Regalías', code: '40' },
-            { name: 'Reincorporación', code: '41' },
-            { name: 'Remuneraciones', code: '42' },
-            { name: 'Semana corrida', code: '43' },
-            { name: 'Subterfugio', code: '44' },
-            { name: 'Sueldo', code: '45' },
-            { name: 'Trato', code: '46' },
-            { name: 'Viáticos', code: '47' },
-            { name: 'Desafuero Maternal', code: '48' },
-            { name: 'Desafuero Sindical', code: '49' },
-            { name: 'Art. 19 N° 12 CPR. Libertad de opinión e información', code: '50' },
-            { name: 'Otras Materias Sindicales', code: '51' },
-            { name: 'Art. 19 N° 1 Derecho a la vida y la integridad', code: '52' },
-            { name: 'Art. 19 N° 16 CPR. Libertad de Trabajo y su protección', code: '53' },
-            { name: 'Art. 19 N° 4 Vida Privada y Honra', code: '54' },
-            { name: 'Art. 19 N° 5 Inviolabilidad de la comunicación privada', code: '55' },
-            { name: 'Art. 19 N° 6 CPR. Libertad de creencias', code: '56' },
-            { name: 'Art. 2 CT. Sobre actos de discriminación', code: '56' },
-            { name: 'Art. 485 inciso 3° CT', code: '56' },
-            { name: 'Accidentes Del Trabajo Y Enfermedades Profesionales', code: '56' }
-        ],
-        []
-    );
+          <DataTable
+            ref={dt}
+            value={demandas}
+            selection={selectedDemandas as any}
+            onSelectionChange={(e) => setSelectedDemandas(e.value as DemandaDTO[])}
+            dataKey="id"
+            paginator
+            rows={10}
+            rowsPerPageOptions={[5, 10, 25]}
+            className="datatable-responsive"
+            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+            currentPageReportTemplate="Mostrando {first} al {last} de {totalRecords} demandas"
+            globalFilter={globalFilter}
+            emptyMessage="No se encontraron demandas."
+            header={header}
+            responsiveLayout="scroll"
+            filterLocale="es"
+            loading={loading}
+          >
+            {/* Selección múltiple */}
+            <Column selectionMode="multiple" headerStyle={{ width: '3.5rem' }}></Column>
 
-    const dropdownItemsNacionalidades: DropdownItem[] = useMemo(
-        () => [
-            { name: 'Afgana', code: 'AF' },
-            { name: 'Alemana', code: 'DE' },
-            { name: 'Andorrana', code: 'AD' },
-            { name: 'Angoleña', code: 'AO' },
-            { name: 'Argentina', code: 'AR' },
-            { name: 'Armenia', code: 'AM' },
-            { name: 'Australiana', code: 'AU' },
-            { name: 'Austriaca', code: 'AT' },
-            { name: 'Bangladesí', code: 'BD' },
-            { name: 'Belga', code: 'BE' },
-            { name: 'Boliviana', code: 'BO' },
-            { name: 'Brasileña', code: 'BR' },
-            { name: 'Búlgara', code: 'BG' },
-            { name: 'Canadiense', code: 'CA' },
-            { name: 'Chilena', code: 'CL' },
-            { name: 'China', code: 'CN' },
-            { name: 'Colombiana', code: 'CO' },
-            { name: 'Coreana', code: 'KR' },
-            { name: 'Costarricense', code: 'CR' },
-            { name: 'Cubana', code: 'CU' },
-            { name: 'Danesa', code: 'DK' },
-            { name: 'Dominicana', code: 'DO' },
-            { name: 'Ecuatoriana', code: 'EC' },
-            { name: 'Egipcia', code: 'EG' },
-            { name: 'Española', code: 'ES' },
-            { name: 'Estadounidense', code: 'US' },
-            { name: 'Etíope', code: 'ET' },
-            { name: 'Filipina', code: 'PH' },
-            { name: 'Francesa', code: 'FR' },
-            { name: 'Griega', code: 'GR' },
-            { name: 'Guatemalteca', code: 'GT' },
-            { name: 'Hondureña', code: 'HN' },
-            { name: 'India', code: 'IN' },
-            { name: 'Indonesa', code: 'ID' },
-            { name: 'Irlandesa', code: 'IE' },
-            { name: 'Israelí', code: 'IL' },
-            { name: 'Italiana', code: 'IT' },
-            { name: 'Japonesa', code: 'JP' },
-            { name: 'Marroquí', code: 'MA' },
-            { name: 'Mexicana', code: 'MX' },
-            { name: 'Nicaragüense', code: 'NI' },
-            { name: 'Neozelandesa', code: 'NZ' },
-            { name: 'Noruega', code: 'NO' },
-            { name: 'Panameña', code: 'PA' },
-            { name: 'Paraguaya', code: 'PY' },
-            { name: 'Peruana', code: 'PE' },
-            { name: 'Polaca', code: 'PL' },
-            { name: 'Portuguesa', code: 'PT' },
-            { name: 'Rumana', code: 'RO' },
-            { name: 'Rusa', code: 'RU' },
-            { name: 'Salvadoreña', code: 'SV' },
-            { name: 'Sudafricana', code: 'ZA' },
-            { name: 'Sueca', code: 'SE' },
-            { name: 'Suiza', code: 'CH' },
-            { name: 'Tailandesa', code: 'TH' },
-            { name: 'Turca', code: 'TR' },
-            { name: 'Uruguaya', code: 'UY' },
-            { name: 'Venezolana', code: 'VE' },
-            { name: 'Vietnamita', code: 'VN' },
-        ],
-        []
-    );
+            <Column field="nombres" header="Nombres" sortable headerStyle={{ minWidth: '14rem' }} />
+            <Column field="run" header="RUN" sortable headerStyle={{ minWidth: '12rem' }} />
+            <Column field="correoElectronico" header="Correo" sortable headerStyle={{ minWidth: '16rem' }} />
+            <Column field="createdAt" header="Creada" body={formatFecha} sortable headerStyle={{ minWidth: '14rem' }} />
 
-    const dropdownItemsNatuContratos: DropdownItem[] = useMemo(
-        () => [
-            { name: 'Indefinido', code: '1' },
-            { name: 'Obra o faena', code: '2' },
-            { name: 'Plazo fijo', code: '3' }
-        ],
-        []
-    );
+            <Column header="Documento" body={documentoBodyTemplate} headerStyle={{ minWidth: '12rem' }} />
+            <Column header="Descargar" body={descargarBodyTemplate as any} headerStyle={{ minWidth: '12rem' }} />
 
-    const dropdownItemsFormaPagos: DropdownItem[] = useMemo(
-        () => [
-            { name: 'Efectivo', code: '1' },
-            { name: 'Transferencia', code: '2' }
-        ],
-        []
-    );
+            <Column header="Acciones" body={actionsTemplate} headerStyle={{ minWidth: '10rem' }} />
+          </DataTable>
 
-    const dropdownItemsFueros: DropdownItem[] = useMemo(
-        () => [
-            { name: 'Trabajadora Embarazada', code: '1' },
-            { name: 'Dirigente Sindical', code: '2' },
-            { name: 'Negociación Colectiva Reglada', code: '3' },
-            { name: 'Constitución Sindicato', code: '4' }
-        ],
-        []
-    );
-
-    const dropdownItemsMotivoTerminos: DropdownItem[] = useMemo(
-        () => [
-            { name: 'Renuncia', code: '1' },
-            { name: 'Mutuo Acuerdo', code: '2' },
-            { name: 'Despido', code: '3' },
-            { name: 'Autodespido', code: '4' }
-        ],
-        []
-    );
-
-    const dropdownItemsJornadaLabs: DropdownItem[] = useMemo(
-        () => [
-            { name: '44 horas jornada ordinaria', code: '1' },
-            { name: 'siete por siete', code: '2' },
-            { name: 'diez por diez', code: '3' },
-            { name: 'cuatro por cuatro', code: '4' },
-            { name: 'bisemanal', code: '5' },
-            { name: 'jornada parcial', code: '6' },
-            { name: 'otra especificar', code: '7' }
-        ],
-        []
-    );
-
-    const dropdownItemsEstadoCivil: DropdownItem[] = useMemo(
-        () => [
-            { name: 'Soltero(a)', code: '1' },
-            { name: 'Casado(a)', code: '2' },
-            { name: 'Conviviente civil', code: '3' },
-            { name: 'Separado(a) judicialmente', code: '4' },
-            { name: 'Divorciado(a)', code: '5' },
-            { name: 'Viudo(a)', code: '6' }
-        ],
-        []
-    );
-
-    const dropdownItemsCotizacionSaluds: DropdownItem[] = useMemo(
-        () => [
-            { name: '12 meses', code: '12' },
-            { name: '11 meses', code: '11' },
-            { name: '10 meses', code: '10' },
-            { name: '9 meses', code: '9' },
-            { name: '8 meses', code: '8' },
-            { name: '7 meses', code: '7' },
-            { name: '6 meses', code: '6' },
-            { name: '5 meses', code: '5' },
-            { name: '4 meses', code: '4' },
-            { name: '3 meses', code: '3' },
-            { name: '2 meses', code: '2' },
-            { name: '1 meses', code: '1' }
-        ],
-        []
-    );
-
-    const dropdownItemsCotizacionAfps: DropdownItem[] = useMemo(
-        () => [
-            { name: '12 meses', code: '12' },
-            { name: '11 meses', code: '11' },
-            { name: '10 meses', code: '10' },
-            { name: '9 meses', code: '9' },
-            { name: '8 meses', code: '8' },
-            { name: '7 meses', code: '7' },
-            { name: '6 meses', code: '6' },
-            { name: '5 meses', code: '5' },
-            { name: '4 meses', code: '4' },
-            { name: '3 meses', code: '3' },
-            { name: '2 meses', code: '2' },
-            { name: '1 meses', code: '1' }
-        ],
-        []
-    );
-
-    const dropdownItemsCotizacionAfcs: DropdownItem[] = useMemo(
-        () => [
-            { name: '12 meses', code: '12' },
-            { name: '11 meses', code: '11' },
-            { name: '10 meses', code: '10' },
-            { name: '9 meses', code: '9' },
-            { name: '8 meses', code: '8' },
-            { name: '7 meses', code: '7' },
-            { name: '6 meses', code: '6' },
-            { name: '5 meses', code: '5' },
-            { name: '4 meses', code: '4' },
-            { name: '3 meses', code: '3' },
-            { name: '2 meses', code: '2' },
-            { name: '1 meses', code: '1' }
-        ],
-        []
-    );
-
-    const dropdownItemsTipoDespidos: DropdownItem[] = useMemo(
-        () => [
-            { name: 'Disciplinario', code: '1' },
-            { name: 'Necesidades de la Empresa', code: '2' },
-            { name: 'Sin Causa', code: '3' },
-            { name: 'Término de Plazo', code: '4' },
-            { name: 'Término de Obra o Faena', code: '5' }
-        ],
-        []
-    );
-
-    const dropdownItemsDespidoDisciplinarios: DropdownItem[] = useMemo(
-        () => [
-            { name: 'Incumplimiento Grave', code: '1' },
-            { name: 'Ausencia Injustificadas', code: '2' },
-            { name: 'Acaso Sexual', code: '3' },
-            { name: 'Acoso Laboral', code: '4' },
-            { name: 'Injurias', code: '5' },
-            { name: 'Negociación Incompatible', code: '6' },
-            { name: 'Actos o Imprudencia Temeraria', code: '7' },
-            { name: 'Abandono de Trabajo', code: '8' },
-            { name: 'Falta de Probidad', code: '9' },
-            { name: 'Otros Especificar', code: '10' }
-        ],
-        []
-    );
-
-    const dropdownItemsPrestacionesAdeudadas: DropdownItem[] = useMemo(
-        () => [
-            { name: 'Feriados', code: '1' },
-            { name: 'Remuneraciones', code: '2' },
-            { name: 'Gratificaciones', code: '3' },
-            { name: 'Indemnizaciones', code: '4' },
-            { name: 'Bonos', code: '5' },
-            { name: 'Años de Servicios', code: '6' },
-            { name: 'Horas Extraordinarias', code: '7' },
-            { name: 'Comisiones', code: '8' },
-            { name: 'Otros', code: '9' }
-        ],
-        []
-    );
-
-    /* useEffect(() => {
-        setDropdownItem(dropdownItemsMateria[0]);
-    }, [dropdownItemsMateria]); */
-
-    const addErrorMessage = () => {
-        message.current?.show({ severity: 'error', content: 'Esta materia ya ha sido agregada.' });
-    };
-
-    const handleAddButton = () => {
-        if (dropdownItemMateria) {
-            // Verificar si la materia ya existe en los botones generados
-            const alreadyExists = generatedButtons.some(
-                (button) => button.code === dropdownItemMateria.code
-            );
-
-            if (alreadyExists) {
-                addErrorMessage();
-                return; // Salir sin agregar el botón
-            }
-
-            // Agregar la materia al estado si no existe
-            setGeneratedButtons((prev) => [
-                ...prev,
-                { name: dropdownItemMateria.name, code: dropdownItemMateria.code },
-            ]);
-        }
-    };
-
-    const handleRemoveButton = (code: string) => {
-        setGeneratedButtons((prev) =>
-            prev.filter((button) => button.code !== code)
-        );
-    };
-
-    const toolbarLeftTemplate = () => (
-        <>
-            <Button
-                label="Agregar"
-                icon="pi pi-plus"
-                onClick={() => {
-                    setDemandadoSol({ id: '', nombre: '', rut: '', domicilio: '' });
-                    setDemandadoSolDialog(true);
-                }}
-                style={{ marginRight: '.5em' }}
-            />
-            <Button icon="pi pi-pencil" disabled severity="warning" style={{ marginRight: '.5em' }} />
-            <Button icon="pi pi-trash" disabled severity="danger" style={{ marginRight: '.5em' }} />
-        </>
-    );
-
-    const saveDemandadoSol = () => {
-        setSubmitted(true);
-
-        if (demandadoSol.nombre?.trim() && demandadoSol.rut?.trim() && demandadoSol.domicilio?.trim()) {
-            const _demandadoSols = [...demandadoSols];
-            const _demandadoSol = { ...demandadoSol };
-
-            if (!_demandadoSol.id) {
-                _demandadoSol.id = crypto.randomUUID(); // o usa createId() si lo prefieres
-                _demandadoSols.push(_demandadoSol);
-
-                toast.current?.show({
-                    severity: 'success',
-                    summary: 'Éxito',
-                    detail: 'Demandado Creado',
-                    life: 3000
-                });
-            } else {
-                const index = _demandadoSols.findIndex(d => d.id === _demandadoSol.id);
-                if (index !== -1) {
-                    _demandadoSols[index] = _demandadoSol;
-
-                    toast.current?.show({
-                        severity: 'success',
-                        summary: 'Éxito',
-                        detail: 'Demandado Actualizado',
-                        life: 3000
-                    });
-                }
-            }
-
-            setDemandadoSols(_demandadoSols);
-            setDemandadoSolDialog(false);
-            setDemandadoSol({ id: '', nombre: '', rut: '', domicilio: '' }); // o emptyDemandadoSol si prefieres
-        }
-    };
-
-
-    const findIndexById = (id: string) => {
-        let index = -1;
-        for (let i = 0; i < (demandadoSols as any)?.length; i++) {
-            if ((demandadoSols as any)[i].id === id) {
-                index = i;
-                break;
-            }
-        }
-
-        return index;
-    };
-
-    const createId = () => {
-        let id = '';
-        let chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        for (let i = 0; i < 5; i++) {
-            id += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return id;
-    };
-
-    const onInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, name: string) => {
-        const val = (e.target && e.target.value) || '';
-        let _demandadoSol = { ...demandadoSol };
-        _demandadoSol[`${name}`] = val;
-
-        setDemandadoSol(_demandadoSol);
-    };
-
-
-    const demandadoSolDialogFooter = (
-        <>
-            <Button label="Cancelar" icon="pi pi-times" text onClick={hideDialog} />
-            <Button label="Guardar" icon="pi pi-check" text onClick={saveDemandadoSol} />
-        </>
-    );
-
-    const nombreBodyTemplate = (rowData: DemandadoSolDTO) => {
-        return (
-            <>
-                <span className="p-column-title">Nombre Razón Social de Empresa</span>
-                {rowData.nombre}
-            </>
-        );
-    };
-
-    const rutBodyTemplate = (rowData: DemandadoSolDTO) => {
-        return (
-            <>
-                <span className="p-column-title">RUT</span>
-                {rowData.rut}
-            </>
-        );
-    };
-
-    const domicilioBodyTemplate = (rowData: DemandadoSolDTO) => {
-        return (
-            <>
-                <span className="p-column-title">Domicilio</span>
-                {rowData.domicilio}
-            </>
-        );
-    };
-
-    const editDemandadoSol = (DemandadoSol: DemandadoSolDTO) => {
-        setDemandadoSol({ ...DemandadoSol });
-        setDemandadoSolDialog(true);
-    };
-
-    const confirmDeleteDemandadoSol = (DemandadoSol: DemandadoSolDTO) => {
-        setDemandadoSol(DemandadoSol);
-        setDeleteDemandadoSolDialog(true);
-    };
-
-    const actionBodyTemplate = (rowData: DemandadoSolDTO) => {
-        return (
-            <>
-                <Button icon="pi pi-pencil" rounded severity="success" className="mr-2" onClick={() => editDemandadoSol(rowData)} />
-                <Button icon="pi pi-trash" rounded severity="warning" onClick={() => confirmDeleteDemandadoSol(rowData)} />
-            </>
-        );
-    };
-
-    return (
-        <div className="grid">
-            <div className="col-12">
-                <div className="card">
-                    <h5>DATOS CLIENTE</h5>
-                    <form onSubmit={handleSubmit} className="p-fluid formgrid grid">
-                        <div className="p-fluid formgrid grid">
-                            <div className="field col-12 md:col-4">
-                                <label htmlFor="nombres">Nombres</label>
-                                <InputText
-                                    id="nombres"
-                                    type="text"
-                                    value={formData.nombres}
-                                    onChange={(e) =>
-                                        handleChange({
-                                            target: {
-                                                name: 'nombres',
-                                                value: e.target.value
-                                            }
-                                        })
-                                    }
-                                    placeholder='Ingrese los nombres' />
-                            </div>
-                            <div className="field col-12 md:col-4">
-                                <label htmlFor="apPaterno">Apellido Paterno</label>
-                                <InputText
-                                    id="apPaterno"
-                                    type="text"
-                                    value={formData.apPaterno}
-                                    onChange={(e) =>
-                                        handleChange({
-                                            target: {
-                                                name: 'apPaterno',
-                                                value: e.target.value
-                                            }
-                                        })
-                                    }
-                                    placeholder='Ingrese apellido paterno' />
-                            </div>
-                            <div className="field col-12 md:col-4">
-                                <label htmlFor="apMaterno">Apellido Materno</label>
-                                <InputText
-                                    id="apMaterno"
-                                    type="text"
-                                    value={formData.apMaterno}
-                                    onChange={(e) =>
-                                        handleChange({
-                                            target: {
-                                                name: 'apMaterno',
-                                                value: e.target.value
-                                            }
-                                        })
-                                    }
-                                    placeholder='Ingrese apellido materno' />
-                            </div>
-                            <div className="field col-12 md:col-4">
-                                <label htmlFor="run">Rut/Pasaporte/Cédula</label>
-                                <InputText
-                                    id="run"
-                                    type="text"
-                                    value={formData.run}
-                                    onChange={(e) =>
-                                        handleChange({
-                                            target: {
-                                                name: 'run',
-                                                value: e.target.value
-                                            }
-                                        })
-                                    }
-                                    placeholder='Ingrese Rut/Pasaporte/Cédula' />
-                            </div>
-                            <div className="field col-12 md:col-4">
-                                <label htmlFor="nacionalidad">Nacionalidad</label>
-                                <Dropdown
-                                    id="nacionalidad"
-                                    value={formData.nacionalidad}
-                                    onChange={(e) =>
-                                        handleChange({
-                                            target: {
-                                                name: 'nacionalidad',
-                                                value: e.value
-                                            }
-                                        })
-                                    }
-                                    options={dropdownItemsNacionalidades}
-                                    optionLabel="name"
-                                    placeholder="Selecccione Nacionalidad"
-                                    filter></Dropdown>
-                            </div>
-                            <div className="field col-12 md:col-4">
-                                <label htmlFor="estadoCivil">Estado Civil</label>
-                                <Dropdown
-                                    id="estadoCivil"
-                                    value={formData.estadoCivil}
-                                    onChange={(e) =>
-                                        handleChange({
-                                            target: {
-                                                name: 'estadoCivil',
-                                                value: e.value
-                                            }
-                                        })
-                                    }
-                                    options={dropdownItemsEstadoCivil}
-                                    optionLabel="name"
-                                    placeholder="Selecccione Estado Civil">
-                                </Dropdown>
-                            </div>
-                            <div className="field col-12 md:col-4">
-                                <label htmlFor="nacimiento">Fecha de Nacimiento</label>
-                                <Calendar
-                                    id="nacimiento"
-                                    showIcon
-                                    showButtonBar
-                                    value={formData.fechaNacimiento ? new Date(formData.fechaNacimiento) : null}
-                                    dateFormat='dd/mm/yy'
-                                    onChange={(e) =>
-                                        handleChange({
-                                            target: {
-                                                name: 'fechaNacimiento',
-                                                value: e.value ?? null
-                                            }
-                                        })
-                                    }
-                                    placeholder='dd/mm/yyyy'
-                                    locale='es' />
-                            </div>
-                            <div className="field col-12 md:col-6">
-                                <label htmlFor="email">Correo Electrónico</label>
-                                <InputText
-                                    id="email"
-                                    type="text"
-                                    value={formData.correoElectronico}
-                                    onChange={(e) =>
-                                        handleChange({
-                                            target: {
-                                                name: 'correoElectronico',
-                                                value: e.target.value
-                                            }
-                                        })
-                                    }
-                                    placeholder='ejemplo@direccion.cl' />
-                            </div>
-                            <div className="field col-12 md:col-6" style={{
-                                paddingTop: '10px', marginTop: '0rem'
-                            }}>
-                                <Button type="submit" label="Registrar Demanda" className="p-button-success" />
-                            </div>
-                        </div>
-
-                    </form>
-                </div>
-
-                {/* <div className="card">
-                    <h5>DATOS DEMANDADO PRINCIPAL</h5>
-                    <div className="p-fluid formgrid grid">
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="nombreRazonSocial">Nombre Razón Social de Empresa</label>
-                            <InputText 
-                                id="nombreRazonSocial" 
-                                type="text" 
-                                placeholder='Ingrese el Nombre Razón Social de Empresa'/>
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="rutRazonSocial">Rut</label>
-                            <InputText 
-                                id="rutRazonSocial" 
-                                type="text" 
-                                placeholder='Ingrese rut'/>
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="domicilioRazonSocial">Domicilio</label>
-                            <InputText 
-                                id="domicilioRazonSocial" 
-                                type="text" 
-                                placeholder='Ingrese domicilio'/>
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="representanteLegal">Representante Legal</label>
-                            <InputText 
-                                id="representanteLegal" 
-                                type="text" 
-                                placeholder='Ingrese nombre del representante legal'/>
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="run">Rut Representante Legal</label>
-                            <InputText 
-                                id="run" 
-                                type="text" 
-                                placeholder='Ingrese Rut del representante legal'/>
-                        </div>
-                    </div>
-                </div> */}
-                {/*inicio de pagina con 2 columnas
-                <div className="card">
-                    <h5>INGRESO DE DEMANDA</h5>
-                    <div className="p-fluid formgrid grid">
-                        <div className="field col-12 md:col-6">
-                            <label htmlFor="materia">Materia</label>
-                            <Dropdown
-                                id="materia"
-                                value={dropdownItemMateria}
-                                onChange={(e) => setDropdownItemMateria(e.value)}
-                                options={dropdownItemsMateria}
-                                optionLabel="name"
-                                placeholder="Selecccione Materia"
-                                filter></Dropdown>
-                        </div>
-                        <div className="field col-6 md:col-3">
-                            <label htmlFor="addmateria" style={{ color: "#fff" }}>.</label>
-                            <Button
-                                id="addmateria"
-                                label="Agregar"
-                                icon="pi pi-plus"
-                                severity="success"
-                                onClick={handleAddButton}></Button>
-                        </div>
-                        <Messages ref={message} />
-                    </div>
-                </div>
-                <div className="card">
-                    <h5>MATERIAS SELECCIONADA</h5>
-                    <div className="flex flex-wrap gap-2">
-                        {generatedButtons.map((button) => (
-                            <Button
-                                key={button.code}
-                                label={button.name}
-                                severity="info"
-                                className="p-mr-2 p-mb-2"
-                                onClick={() => handleRemoveButton(button.code)}
-                            />
-                        ))}
-                    </div>
-                </div>*/}
+          {/* Eliminar una */}
+          <Dialog
+            visible={deleteDialogVisible}
+            style={{ width: 450 }}
+            header="Confirmar"
+            modal
+            footer={deleteOneFooter}
+            onHide={() => setDeleteDialogVisible(false)}
+          >
+            <div className="flex align-items-center justify-content-center">
+              <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem' }} />
+              {demandaToDelete && (
+                <span>
+                  ¿Seguro que deseas eliminar la demanda de <b>{demandaToDelete.nombres}</b> ({demandaToDelete.run})?
+                </span>
+              )}
             </div>
-            {/*inicio de pagina con 2 columnas*/}
-            <div className="col-12 md:col-6">
-                <div className="card p-fluid">
-                    <h5>DATOS DEMANDADO PRINCIPAL</h5>
-                    <div className="field">
-                        <label htmlFor="nombreRazonSocial">Nombre Razón Social de Empresa</label>
-                        <InputText
-                            id="nombreRazonSocial"
-                            type="text"
-                            value={formData.nombreRazonSocial}
-                            onChange={(e) =>
-                                handleChange({
-                                    target: {
-                                        name: 'nombreRazonSocial',
-                                        value: e.target.value
-                                    }
-                                })
-                            }
-                            placeholder='Ingrese el Nombre Razón Social de Empresa' />
-                    </div>
-                    <div className="field">
-                        <label htmlFor="rutRazonSocial">Rut</label>
-                        <InputText
-                            id="rutRazonSocial"
-                            type="text"
-                            value={formData.rutRazonSocial}
-                            onChange={(e) =>
-                                handleChange({
-                                    target: {
-                                        name: 'rutRazonSocial',
-                                        value: e.target.value
-                                    }
-                                })
-                            }
-                            placeholder='Ingrese rut' />
-                    </div>
-                    <div className="field">
-                        <label htmlFor="domicilioRazonSocial">Domicilio</label>
-                        <InputText
-                            id="domicilioRazonSocial"
-                            type="text"
-                            value={formData.domicilioRazonSocial}
-                            onChange={(e) =>
-                                handleChange({
-                                    target: {
-                                        name: 'domicilioRazonSocial',
-                                        value: e.target.value
-                                    }
-                                })
-                            }
-                            placeholder='Ingrese domicilio' />
-                    </div>
-                    <div className="field">
-                        <label htmlFor="representanteLegal">Representante Legal</label>
-                        <InputText
-                            id="representanteLegal"
-                            type="text"
-                            value={formData.representanteLegal}
-                            onChange={(e) =>
-                                handleChange({
-                                    target: {
-                                        name: 'representanteLegal',
-                                        value: e.target.value
-                                    }
-                                })
-                            }
-                            placeholder='Ingrese nombre del representante legal' />
-                    </div>
-                    <div className="field">
-                        <label htmlFor="runRepresentanteLegal">Rut Representante Legal</label>
-                        <InputText
-                            id="runRepresentanteLegal"
-                            type="text"
-                            value={formData.runRepresentanteLegal}
-                            onChange={(e) =>
-                                handleChange({
-                                    target: {
-                                        name: 'runRepresentanteLegal',
-                                        value: e.target.value
-                                    }
-                                })
-                            }
-                            placeholder='Ingrese Rut del representante legal' />
-                    </div>
-                </div>
+          </Dialog>
+
+          {/* Eliminar varias */}
+          <Dialog
+            visible={deleteManyDialogVisible}
+            style={{ width: 450 }}
+            header="Confirmar"
+            modal
+            footer={deleteManyFooter}
+            onHide={() => setDeleteManyDialogVisible(false)}
+          >
+            <div className="flex align-items-center justify-content-center">
+              <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem' }} />
+              <span>¿Seguro que deseas eliminar las demandas seleccionadas?</span>
             </div>
-            <div className="col-12 md:col-6">
-                <div className="card">
-                    <h5>DEMANADO SOLIDARIO</h5>
-                    <Toolbar start={toolbarLeftTemplate}></Toolbar>
-                    <DataTable
-                        ref={dtDemandadoSol}
-                        value={demandadoSols}
-                        selection={selectedDemandadoSols}
-                        onSelectionChange={(e) => setSelectedDemandadoSols(e.value as any)}
-                        dataKey="id"
-                        rows={10}
-                        rowsPerPageOptions={[5, 10, 25]}
-                        className="datatable-responsive"
-                        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                        currentPageReportTemplate="Mostrando {first} del {last} de {totalRecords} registros"
-                        globalFilter={globalFilter}
-                        emptyMessage="No se encontraron Registros."
-                        responsiveLayout="scroll"
-                        filterLocale='es'
-                    >
-                        <Column selectionMode="multiple" headerStyle={{ width: '4rem' }}></Column>
-                        <Column field="NombresRazonSocial" header="Razon Social" body={nombreBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
-                        <Column field="RUT" header="RUT" body={rutBodyTemplate} headerStyle={{ minWidth: '10rem' }}></Column>
-                        <Column field="Domicilio" header="Domicilio" body={domicilioBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
-                        {/*<Column body={actionBodyTemplate} headerStyle={{ minWidth: '10rem' }}></Column>*/}
-                    </DataTable>
-                    <Dialog visible={demandadoSolDialog} style={{ width: '450px' }} header="Demandado Solidario" modal className="p-fluid" footer={demandadoSolDialogFooter} onHide={hideDialog}>
-                        <div className="field">
-                            <label htmlFor="nombreDemandadoSol">Nombre Razon Social</label>
-                            <InputText
-                                id="nombreDemandadoSol"
-                                value={demandadoSol.nombre}
-                                onChange={(e) => onInputChange(e, 'nombre')}
-                                required
-                                autoFocus
-                                className={classNames({
-                                    'p-invalid': submitted && !demandadoSol.nombre
-                                })}
-                            />
-                            {submitted && !demandadoSol.nombre && <small className="p-invalid">Nombre es requerido.</small>}
-                        </div>
-                        <div className="field">
-                            <label htmlFor="rutDemandadoSol">RUT</label>
-                            <InputText
-                                id="rutDemandadoSol"
-                                value={demandadoSol.rut}
-                                onChange={(e) => onInputChange(e, 'rut')}
-                                required
-                                autoFocus
-                                className={classNames({
-                                    'p-invalid': submitted && !demandadoSol.rut
-                                })}
-                            />
-                            {submitted && !demandadoSol.rut && <small className="p-invalid">RUT es requerido.</small>}
-                        </div>
-                        <div className="field">
-                            <label htmlFor="domicilioDemandadoSol">Domicilio</label>
-                            <InputText
-                                id="domicilioDemandadoSol"
-                                value={demandadoSol.domicilio}
-                                onChange={(e) => onInputChange(e, 'domicilio')}
-                                required
-                                autoFocus
-                                className={classNames({
-                                    'p-invalid': submitted && !demandadoSol.domicilio
-                                })}
-                            />
-                            {submitted && !demandadoSol.domicilio && <small className="p-invalid">Domicilio es requerido.</small>}
-                        </div>
-                    </Dialog>
-                </div>
-            </div>
-            {/*termino de pagina con 2 columnas*/}
-
-            {/*Inicio Seccion Relacion Laboral*/}
-            <div className="col-12">
-                "<div className="card">
-                    <h5>RELACION LABORAL</h5>
-                    <div className="p-fluid formgrid grid">
-                        <div className="field col-12 md:col-3">
-                            <label htmlFor="fechaRelaLaboral">Fecha Inicio Relación Laboral</label>
-                            <Calendar
-                                id="fechaRelaLaboral"
-                                showIcon
-                                showButtonBar
-                                value={formData.fechaInicioRelacionLaboral ? new Date(formData.fechaInicioRelacionLaboral) : null}
-                                dateFormat='dd/mm/yy'
-                                onChange={(e) =>
-                                    handleChange({
-                                        target: {
-                                            name: 'fechaRelaLaboral',
-                                            value: e.value ?? null
-                                        }
-                                    })
-                                }
-                                placeholder='dd/mm/yyyy'
-                                locale='es' />
-                        </div>
-                        <div className="field col-12 md:col-3">
-                            <label htmlFor="natuContrato">Naturaleza del Contrato</label>
-                            <Dropdown
-                                id="natuContrato"
-                                value={dropdownItemNatuContrato}
-                                onChange={(e) => setDropdownItemNatuContrato(e.value)}
-                                options={dropdownItemsNatuContratos}
-                                optionLabel="name"
-                                placeholder="Selecccione">
-                            </Dropdown>
-                        </div>
-                        <div className="field col-12 md:col-6">
-                            <label htmlFor="funciones">Funciones</label>
-                            <InputTextarea
-                                id="funciones"
-                                value={formData.funciones}
-                                onChange={(e) =>
-                                    handleChange({
-                                        target: {
-                                            name: 'funciones',
-                                            value: e.target.value
-                                        }
-                                    })
-                                }
-                                placeholder="Ingrese sus funciones"
-                                rows={5}
-                                cols={30}
-                            />
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="lugar">Lugar</label>
-                            <InputText
-                                id="lugar"
-                                type="text"
-                                value={formData.lugar}
-                                onChange={(e) =>
-                                    handleChange({
-                                        target: {
-                                            name: 'lugar',
-                                            value: e.target.value
-                                        }
-                                    })
-                                }
-                                placeholder='Domicilio dónde trabajó' />
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="jornada">Jornada</label>
-                            <Dropdown
-                                id="jornada"
-                                value={dropdownItemJornadaLab}
-                                onChange={(e) => setDropdownItemJornadaLab(e.value)}
-                                options={dropdownItemsJornadaLabs}
-                                optionLabel="name"
-                                placeholder="Selecccione">
-                            </Dropdown>
-                        </div>
-                        {dropdownItemJornadaLab?.name === 'otra especificar' && (
-                            <div className="field col-12 md:col-4">
-                                <label htmlFor="otraJornada">Especificar:</label>
-                                <InputText
-                                    id="otraJornada"
-                                    type="text"
-                                    value={formData.otraJornada}
-                                    onChange={(e) =>
-                                        handleChange({
-                                            target: {
-                                                name: 'otraJornada',
-                                                value: e.target.value
-                                            }
-                                        })
-                                    }
-                                    placeholder='Especificar otra jornada' />
-                            </div>
-                        )}
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="regAsistencia">Registro de Asistencia</label>
-                            <div className="field-radiobutton">
-                                <RadioButton
-                                    inputId="regAsistencia"
-                                    name="option"
-                                    value="Sí"
-                                    checked={radioValueRegAsistencia === "Sí"}
-                                    onChange={(e) => setRadioValueRegAsistencia(e.value)}
-                                />
-                                <label htmlFor="regAsistencia">Sí</label>
-                            </div>
-                            <div className="field-radiobutton">
-                                <RadioButton
-                                    inputId="regAsistencia2"
-                                    name="option"
-                                    value="No"
-                                    checked={radioValueRegAsistencia === "No"}
-                                    onChange={(e) => setRadioValueRegAsistencia(e.value)}
-                                />
-                                <label htmlFor="regAsistencia2">No</label>
-                            </div>
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="remuneracion">Remuneración</label>
-                            <InputNumber
-                                id="remuneracion"
-                                mode="decimal"
-                                placeholder='especificar monto'
-                                value={formData.remuneracion}
-                                onValueChange={(e) =>
-                                    handleChange({
-                                        target: {
-                                            name: 'remuneracion',
-                                            value: e.value ?? null
-                                        }
-                                    })
-                                }
-                            ></InputNumber>
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="formaPago">Forma de Pago</label>
-                            <Dropdown
-                                id="formaPago"
-                                value={dropdownItemFormaPago}
-                                onChange={(e) => setDropdownItemFormaPago(e.value)}
-                                options={dropdownItemsFormaPagos}
-                                optionLabel="name"
-                                placeholder="Selecccione">
-                            </Dropdown>
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="liquidacionSueldo">Liquidaciones de Sueldo</label>
-                            <div className="field-radiobutton">
-                                <RadioButton
-                                    inputId="liquidacionSueldo"
-                                    name="option"
-                                    value="Sí"
-                                    checked={radioValueLiquidacionSueldo === "Sí"}
-                                    onChange={(e) => setRadioValueLiquidacionSueldo(e.value)}
-                                />
-                                <label htmlFor="liquidacionSueldo">Sí</label>
-                            </div>
-                            <div className="field-radiobutton">
-                                <RadioButton
-                                    inputId="liquidacionSueldo2"
-                                    name="option"
-                                    value="No"
-                                    checked={radioValueLiquidacionSueldo === "No"}
-                                    onChange={(e) => setRadioValueLiquidacionSueldo(e.value)}
-                                />
-                                <label htmlFor="liquidacionSueldo2">No</label>
-                            </div>
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="cotizacionSalud">Cotizaciones de Salud</label>
-                            <Dropdown
-                                id="cotizacionSalud"
-                                value={dropdownItemCotizacionSalud}
-                                onChange={(e) => setDropdownItemCotizacionSalud(e.value)}
-                                options={dropdownItemsCotizacionSaluds}
-                                optionLabel="name"
-                                tooltip="Estado de cotizaciones Fonasa o Isapre(pagadas o no pagadas)"
-                                tooltipOptions={{ position: 'bottom' }}
-                                placeholder="Selecccione">
-                            </Dropdown>
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="cotizacionAfp">Cotizaciones AFP</label>
-                            <Dropdown
-                                id="cotizacionesAfp"
-                                value={dropdownItemCotizacionAfp}
-                                onChange={(e) => setDropdownItemCotizacionAfp(e.value)}
-                                options={dropdownItemsCotizacionAfps}
-                                optionLabel="name"
-                                tooltip="Estado de cotizaciones AFP(pagadas o no pagadas)"
-                                tooltipOptions={{ position: 'bottom' }}
-                                placeholder="Selecccione">
-                            </Dropdown>
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="cotizacionAfc">Cotizaciones AFC</label>
-                            <Dropdown
-                                id="cotizacionesAfc"
-                                value={dropdownItemCotizacionAfc}
-                                onChange={(e) => setDropdownItemCotizacionAfc(e.value)}
-                                options={dropdownItemsCotizacionAfcs}
-                                optionLabel="name"
-                                tooltip="Estado de cotizaciones Seguro Cesantía AFC(pagadas o no pagadas)"
-                                tooltipOptions={{ position: 'bottom' }}
-                                placeholder="Selecccione">
-                            </Dropdown>
-                        </div>
-
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="vacaciones">Vacaciones</label>
-                            <InputNumber
-                                id="vacaciones"
-                                value={formData.vacaciones}
-                                onValueChange={(e) =>
-                                    handleChange({
-                                        target: {
-                                            name: 'vacaciones',
-                                            value: e.value ?? null
-                                        }
-                                    })
-                                }
-                                showButtons
-                                tooltip="Meses sin tener vacaciones"
-                                tooltipOptions={{ position: 'bottom' }}
-                            ></InputNumber>
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="fuero">Fuero</label>
-                            <Dropdown
-                                id="fuero"
-                                value={dropdownItemFuero}
-                                onChange={(e) => setDropdownItemFuero(e.value)}
-                                options={dropdownItemsFueros}
-                                optionLabel="name"
-                                placeholder="Selecccione">
-                            </Dropdown>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {/*Inicio Seccion Termino Relacion Laboral*/}
-            <div className="col-12">
-                <div className="card">
-                    <h5>TERMINO RELACION LABORAL</h5>
-                    <div className="p-fluid formgrid grid">
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="fechaTerminoRelaLaboral">Fecha Término Relación Laboral</label>
-                            <Calendar
-                                id="fechaTerminoRelaLaboral"
-                                showIcon
-                                showButtonBar
-                                value={formData.fechaTerminoRelaLaboral ? new Date(formData.fechaTerminoRelaLaboral) : null}
-                                dateFormat='dd/mm/yy'
-                                onChange={(e) =>
-                                    handleChange({
-                                        target: {
-                                            name: 'fechaTerminoRelaLaboral',
-                                            value: e.value ?? null
-                                        }
-                                    })
-                                }
-                                placeholder='dd/mm/yyyy'
-                                locale='es' />
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="motivoTermino">Motivo Término</label>
-                            <Dropdown
-                                id="motivoTermino"
-                                value={dropdownItemMotivoTermino}
-                                onChange={(e) => setDropdownItemMotivoTermino(e.value)}
-                                options={dropdownItemsMotivoTerminos}
-                                optionLabel="name"
-                                placeholder="Selecccione">
-                            </Dropdown>
-                        </div>
-                        {dropdownItemMotivoTermino?.name === 'Despido' && (
-                            <div className="field col-12 md:col-4">
-                                <label htmlFor="tipoDespido">Tipo Despido</label>
-                                <Dropdown
-                                    id="tipoDespido"
-                                    value={dropdownItemTipoDespido}
-                                    onChange={(e) => setDropdownItemTipoDespido(e.value)}
-                                    options={dropdownItemsTipoDespidos}
-                                    optionLabel="name"
-                                    placeholder="Selecccione">
-                                </Dropdown>
-                            </div>
-                        )}
-
-                        {dropdownItemTipoDespido?.name === 'Disciplinario' && (
-
-                            <div className="field col-12 md:col-4">
-                                <label htmlFor="despidoDisciplinario">Despido Disciplinario</label>
-                                <Dropdown
-                                    id="despidoDisciplinario"
-                                    value={dropdownItemDespidoDisciplinario}
-                                    onChange={(e) => setDropdownItemDespidoDisciplinario(e.value)}
-                                    options={dropdownItemsDespidoDisciplinarios}
-                                    optionLabel="name"
-                                    placeholder="Selecccione">
-                                </Dropdown>
-                            </div>
-                        )}
-                        {dropdownItemDespidoDisciplinario?.name === 'Otros Especificar' && dropdownItemTipoDespido?.name === 'Disciplinario' && (
-                            <div className="field col-12 md:col-4">
-                                <label htmlFor="otroDespidoDisciplinario">Especificar:</label>
-                                <InputText
-                                    id="otroDespidoDisciplinario"
-                                    type="text"
-                                    value={formData.otroDespidoDisciplinario}
-                                    onChange={(e) =>
-                                        handleChange({
-                                            target: {
-                                                name: 'otroDespidoDisciplinario',
-                                                value: e.target.value
-                                            }
-                                        })
-                                    }
-                                    placeholder='Especificar otra motivo' />
-                            </div>
-                        )}
-                        {dropdownItemTipoDespido?.name === 'Necesidades de la Empresa' && (
-
-                            <div className="field col-12 md:col-4">
-                                <label htmlFor="anosServicios">Se pagaron años de Servicios</label>
-                                <div className="field-radiobutton">
-                                    <RadioButton
-                                        inputId="anosServicios"
-                                        name="option"
-                                        value="Sí"
-                                        checked={radioValueAnosServicio === "Sí"}
-                                        onChange={(e) => setRadioValueAnosServicio(e.value)}
-                                    />
-                                    <label htmlFor="anosServicios">Sí</label>
-                                </div>
-                                <div className="field-radiobutton">
-                                    <RadioButton
-                                        inputId="anosServicios2"
-                                        name="option"
-                                        value="No"
-                                        checked={radioValueAnosServicio === "No"}
-                                        onChange={(e) => setRadioValueAnosServicio(e.value)}
-                                    />
-                                    <label htmlFor="anosServicios2">No</label>
-                                </div>
-                            </div>
-
-
-                        )}
-                        {dropdownItemTipoDespido?.name === 'Necesidades de la Empresa' && (
-
-                            <div className="field col-12 md:col-4">
-                                <label htmlFor="mesAviso">Se pago mes de aviso</label>
-                                <div className="field-radiobutton">
-                                    <RadioButton
-                                        inputId="mesAviso"
-                                        name="option"
-                                        value="Sí"
-                                        checked={radioValueMesAviso === "Sí"}
-                                        onChange={(e) => setRadioValueMesAviso(e.value)}
-                                    />
-                                    <label htmlFor="mesAviso">Sí</label>
-                                </div>
-                                <div className="field-radiobutton">
-                                    <RadioButton
-                                        inputId="mesAviso2"
-                                        name="option"
-                                        value="No"
-                                        checked={radioValueMesAviso === "No"}
-                                        onChange={(e) => setRadioValueMesAviso(e.value)}
-                                    />
-                                    <label htmlFor="mesAviso2">No</label>
-                                </div>
-                            </div>
-
-                        )}
-
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="finiquito">Finiquito/Entrega Reserva</label>
-                            <div className="field-radiobutton">
-                                <RadioButton
-                                    inputId="finiquito"
-                                    name="option"
-                                    value="Sí"
-                                    checked={radioValueFiniquito === "Sí"}
-                                    onChange={(e) => setRadioValueFiniquito(e.value)}
-                                />
-                                <label htmlFor="finiquito">Sí</label>
-                            </div>
-                            <div className="field-radiobutton">
-                                <RadioButton
-                                    inputId="finiquito2"
-                                    name="option"
-                                    value="No"
-                                    checked={radioValueFiniquito === "No"}
-                                    onChange={(e) => setRadioValueFiniquito(e.value)}
-                                />
-                                <label htmlFor="finiquito2">No</label>
-                            </div>
-                        </div>
-                        <div className="field col-12 md:col-4">
-                            <label htmlFor="prestacionesAdeudadas">Prestaciones Adeudadas</label>
-                            <MultiSelect
-                                id="prestacionesAdeudadas"
-                                value={dropdownItemPrestacionesAdeudada}  // Ahora es un array
-                                onChange={(e) => setDropdownItemPrestacionesAdeudada(e.value)}
-                                options={dropdownItemsPrestacionesAdeudadas}
-                                optionLabel="name"
-                                placeholder="Seleccione"
-                                maxSelectedLabels={3}  // Muestra hasta 3 etiquetas seleccionadas
-                                className="w-full md:w-20rem"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </div>
+          </Dialog>
         </div>
-    );
-};
-
-export default DemandaPage;
+      </div>
+    </div>
+  );
+}

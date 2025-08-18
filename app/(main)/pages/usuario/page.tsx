@@ -1,107 +1,362 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
+
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { locale, addLocale } from 'primereact/api';
+
 import { Button } from 'primereact/button';
-import { Chart } from 'primereact/chart';
 import { Column } from 'primereact/column';
 import { DataTable } from 'primereact/datatable';
-import { Menu } from 'primereact/menu';
-import React, { useContext, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { Demo } from '@/types';
-import { ChartData, ChartOptions } from 'chart.js';
+import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
+import { Toast } from 'primereact/toast';
+import { Toolbar } from 'primereact/toolbar';
 
-const UsuarioPage = () => {
+export interface UsuarioDTO {
+  id: string;
+  email: string;
+  name?: string;
+  createdAt: string; // ISO string
+}
+export interface CreateUsuarioDTO {
+  email: string;
+  name?: string;
+}
+export interface UpdateUsuarioDTO {
+  email?: string;
+  name?: string | null;
+}
 
-    const router = useRouter();
+export default function UsuariosPage() {
+  const router = useRouter();
 
-    const [products, setProducts] = useState<Demo.Product[]>([]);
-    const menu1 = useRef<Menu>(null);
-    const menu2 = useRef<Menu>(null);
-    const [lineOptions, setLineOptions] = useState<ChartOptions>({});
-    const [formData, setFormData] = useState({ email: "", name: "" });
-    const [usuarios, setUsuarios] = useState([]);
+  // ---- Tabla & filtros
+  const [usuarios, setUsuarios] = useState<UsuarioDTO[]>([]);
+  const [selectedUsuarios, setSelectedUsuarios] = useState<UsuarioDTO[] | null>(null);
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const dt = useRef<DataTable<any>>(null);
 
-    const handleChange = (e: any) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
+  // ---- Toast & diálogos
+  const toast = useRef<Toast>(null);
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [deleteManyDialogVisible, setDeleteManyDialogVisible] = useState(false);
+  const [usuarioToDelete, setUsuarioToDelete] = useState<UsuarioDTO | null>(null);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const response = await fetch("/api/usuario", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(formData),
-        });
+  // ---- Generación / descarga de documentos
+  const [generatingDoc, setGeneratingDoc] = useState<string | null>(null);
 
-        if (response.ok) {
-            alert("Usuario registrado exitosamente");
-            setFormData({ email: "", name: "" });
-            router.push('/pages/usuario/list'); // Navega a la ruta específica
-        } else {
-            alert("Error al registrar usuario");
-        }
-    };
+  // ====== Data fetch ======
+  const fetchUsuarios = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/usuario', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: UsuarioDTO[] = await res.json();
+      setUsuarios(data ?? []);
+    } catch (e: any) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: e?.message || 'No se pudo cargar la lista',
+        life: 5000
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const fetchUsuarios = async () => {
-        const response = await fetch("/api/usuario");
-        const data = await response.json();
-        setUsuarios(data);
-    };
+  useEffect(() => {
+    fetchUsuarios();
+  }, []);
 
-    const formatCurrency = (value: number) => {
-        return value?.toLocaleString('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        });
-    };
+  // ====== Helpers ======
+  const formatFecha = (row: UsuarioDTO) => {
+    const fecha = new Date(row.createdAt);
+    return fecha.toLocaleString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+  };
 
-    return (
-        <div className="grid">
-            <div className="col-12 md:col-6">
-                <div className="card p-fluid">
-                    <h5>DATOS NUEVO USUARIO</h5>
-                    <form onSubmit={handleSubmit} className="p-fluid formgrid grid">
-                        <div className="field">
-                            <label htmlFor="name">Nombre Usuario</label>
-                            <InputText
-                                id="name"
-                                name="name"
-                                type="text"
-                                value={formData.name}
-                                onChange={handleChange}
-                                placeholder="Ingrese el nombre del usuario"
-                                required
-                            />
-                        </div>
-                        <div className="field">
-                            <label htmlFor="email">Correo Electrónico</label>
-                            <InputText
-                                id="email"
-                                name="email"
-                                type="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                placeholder="Ingrese correo electrónico"
-                                required
-                            />
-                        </div>
-                        <div className="field" style={{
-                            textAlign: 'center'
-                        }}>
-                            <label htmlFor="email" style={{
-                            color: 'white',
-                        }}>X</label>
-                            <Button type="submit" label="Registrar Usuario" className="p-button-success" />
-                        </div>
-                    </form>
+  // ====== Navegación ======
+  const goNew = () => router.push('/pages/usuario/new');
+  const goEdit = (u: UsuarioDTO) => router.push(`/pages/usuario/${u.id}/edit`);
 
-                </div>
+  // ====== Documentos ======
+  const handleGenerarDocumento = async (usuario: UsuarioDTO) => {
+    try {
+      setGeneratingDoc(usuario.id);
+      const response = await fetch('/api/generate_doc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          usuarioId: usuario.id,
+          nombreArchivo: `Documento_${usuario.name ?? 'Usuario'}_${new Date().toISOString().slice(0, 10)}.docx`,
+          nombre_cliente: usuario.name ?? '',
+          email: usuario.email
+        })
+      });
+      const result = await response.json();
+      if (!result?.success) throw new Error(result?.error || 'Error al generar documento');
+
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Éxito',
+        detail: 'Documento generado y guardado',
+        life: 3000
+      });
+    } catch (e: any) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: e?.message || 'Error al generar documento',
+        life: 5000
+      });
+    } finally {
+      setGeneratingDoc(null);
+    }
+  };
+
+  const handleDescargarDocumento = async (usuario: UsuarioDTO) => {
+    try {
+      const response = await fetch(`/api/download_doc?usuarioId=${usuario.id}`);
+      if (!response.ok) throw new Error('Error al descargar el documento');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `documento_${usuario.name ?? 'usuario'}.docx`;
+      link.click();
+      link.remove();
+
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Éxito',
+        detail: 'Documento descargado',
+        life: 3000
+      });
+    } catch (e: any) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: e?.message || 'No se pudo descargar',
+        life: 5000
+      });
+    }
+  };
+
+  // ====== Eliminar (uno) ======
+  const confirmDeleteOne = (u: UsuarioDTO) => {
+    setUsuarioToDelete(u);
+    setDeleteDialogVisible(true);
+  };
+
+  const deleteOne = async () => {
+    if (!usuarioToDelete) return;
+    try {
+      const res = await fetch(`/api/usuario/${usuarioToDelete.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const t = await res.text().catch(() => '');
+        throw new Error(t || `Error eliminando usuario`);
+      }
+      toast.current?.show({ severity: 'success', summary: 'Eliminado', detail: 'Usuario eliminado', life: 2500 });
+      await fetchUsuarios();
+    } catch (e: any) {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: e?.message || 'No se pudo eliminar', life: 5000 });
+    } finally {
+      setDeleteDialogVisible(false);
+      setUsuarioToDelete(null);
+    }
+  };
+
+  // ====== Eliminar (varios) ======
+  const confirmDeleteSelected = () => {
+    if (!selectedUsuarios || selectedUsuarios.length === 0) return;
+    setDeleteManyDialogVisible(true);
+  };
+
+  const deleteSelected = async () => {
+    if (!selectedUsuarios || selectedUsuarios.length === 0) return;
+    try {
+      // Si no tienes endpoint batch, elimina uno por uno
+      for (const u of selectedUsuarios) {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await fetch(`/api/usuario/${u.id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`No se pudo eliminar id=${u.id}`);
+      }
+      toast.current?.show({ severity: 'success', summary: 'Eliminados', detail: 'Usuarios eliminados', life: 2500 });
+      setSelectedUsuarios(null);
+      await fetchUsuarios();
+    } catch (e: any) {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: e?.message || 'No se completó la eliminación', life: 5000 });
+    } finally {
+      setDeleteManyDialogVisible(false);
+    }
+  };
+
+  // ====== Templates ======
+  const header = (
+    <div className="flex flex-column md:flex-row md:justify-content-between md:align-items-center">
+      <h5 className="m-0">Usuarios</h5>
+      <span className="block mt-2 md:mt-0 p-input-icon-left">
+        <i className="pi pi-search" />
+        <InputText
+          type="search"
+          onInput={(e) => setGlobalFilter(e.currentTarget.value)}
+          placeholder="Buscar..."
+        />
+      </span>
+    </div>
+  );
+
+  const leftToolbarTemplate = () => (
+    <div className="my-2 flex gap-2">
+      <Button label="Nuevo Usuario" icon="pi pi-plus" severity="success" onClick={goNew} />
+      <Button
+        label="Eliminar Usuario(s)"
+        icon="pi pi-trash"
+        severity="danger"
+        onClick={confirmDeleteSelected}
+        disabled={!selectedUsuarios || selectedUsuarios.length === 0}
+      />
+    </div>
+  );
+
+  const rightToolbarTemplate = () => <></>;
+
+  const actionsTemplate = (row: UsuarioDTO) => (
+    <div className="flex gap-2">
+      <Button
+        icon="pi pi-pencil"
+        rounded
+        severity="success"
+        onClick={() => goEdit(row)}
+        tooltip="Editar"
+      />
+      <Button
+        icon="pi pi-trash"
+        rounded
+        severity="danger"
+        onClick={() => confirmDeleteOne(row)}
+        tooltip="Eliminar"
+      />
+    </div>
+  );
+
+  const documentoBodyTemplate = (row: UsuarioDTO) => (
+    <Button
+      label="Generar DOC"
+      icon="pi pi-file-word"
+      className="p-button-help p-button-sm"
+      loading={generatingDoc === row.id}
+      onClick={() => handleGenerarDocumento(row)}
+    />
+  );
+
+  const descargarBodyTemplate = (row: UsuarioDTO) => (
+    <Button
+      label="Descargar"
+      icon="pi pi-download"
+      className="p-button-help p-button-sm"
+      onClick={() => handleDescargarDocumento(row)}
+    />
+  );
+
+  // ====== Footers diálogos ======
+  const deleteOneFooter = (
+    <>
+      <Button label="No" icon="pi pi-times" text onClick={() => setDeleteDialogVisible(false)} />
+      <Button label="Sí, eliminar" icon="pi pi-check" text onClick={deleteOne} />
+    </>
+  );
+
+  const deleteManyFooter = (
+    <>
+      <Button label="No" icon="pi pi-times" text onClick={() => setDeleteManyDialogVisible(false)} />
+      <Button label="Sí, eliminar" icon="pi pi-check" text onClick={deleteSelected} />
+    </>
+  );
+
+  return (
+    <div className="grid crud-demo">
+      <div className="col-12">
+        <div className="card">
+          <Toast ref={toast} />
+
+          <Toolbar className="mb-4" left={leftToolbarTemplate} right={rightToolbarTemplate} />
+
+          <DataTable
+            ref={dt}
+            value={usuarios}
+            selection={selectedUsuarios as any}
+            onSelectionChange={(e) => setSelectedUsuarios(e.value as UsuarioDTO[])}
+            dataKey="id"
+            paginator
+            rows={10}
+            rowsPerPageOptions={[5, 10, 25]}
+            className="datatable-responsive"
+            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+            currentPageReportTemplate="Mostrando {first} al {last} de {totalRecords} usuarios"
+            globalFilter={globalFilter}
+            emptyMessage="No se encontraron usuarios."
+            header={header}
+            responsiveLayout="scroll"
+            filterLocale="es"
+            loading={loading}
+          >
+            {/* Selección múltiple */}
+            <Column selectionMode="multiple" headerStyle={{ width: '3.5rem' }}></Column>
+
+            <Column field="name" header="Nombre" sortable headerStyle={{ minWidth: '14rem' }} />
+            <Column field="email" header="Correo" sortable headerStyle={{ minWidth: '16rem' }} />
+            <Column field="createdAt" header="Creado" body={formatFecha} sortable headerStyle={{ minWidth: '14rem' }} />
+
+            {/* Acciones CRUD */}
+            <Column header="Acciones" body={actionsTemplate} headerStyle={{ minWidth: '10rem' }} />
+          </DataTable>
+
+          {/* Diálogo eliminar uno */}
+          <Dialog
+            visible={deleteDialogVisible}
+            style={{ width: 450 }}
+            header="Confirmar"
+            modal
+            footer={deleteOneFooter}
+            onHide={() => setDeleteDialogVisible(false)}
+          >
+            <div className="flex align-items-center justify-content-center">
+              <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem' }} />
+              {usuarioToDelete && (
+                <span>
+                  ¿Seguro que deseas eliminar a <b>{usuarioToDelete.name ?? usuarioToDelete.email}</b>?
+                </span>
+              )}
             </div>
-        </div>
-    );
-};
+          </Dialog>
 
-export default UsuarioPage;
+          {/* Diálogo eliminar varios */}
+          <Dialog
+            visible={deleteManyDialogVisible}
+            style={{ width: 450 }}
+            header="Confirmar"
+            modal
+            footer={deleteManyFooter}
+            onHide={() => setDeleteManyDialogVisible(false)}
+          >
+            <div className="flex align-items-center justify-content-center">
+              <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem' }} />
+              <span>¿Seguro que deseas eliminar los usuarios seleccionados?</span>
+            </div>
+          </Dialog>
+        </div>
+      </div>
+    </div>
+  );
+}

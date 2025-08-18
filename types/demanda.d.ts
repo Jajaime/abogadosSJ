@@ -14,7 +14,7 @@ export interface DemandaDTO {
     apPaterno: string;
     apMaterno: string;
     run: string;
-    fechaNacimiento: string; // o Date si manejas formato Date en el backend
+    fechaNacimiento: string | Date;
     nacionalidad: string;
     correoElectronico: string;
     estadoCivil: string;
@@ -40,9 +40,9 @@ export interface DemandaDTO {
     remuneracion: number;
     formaPago: string;
     liquidacionSueldo: boolean;
-    cotizacionSalud: boolean;
-    cotizacionAfp: boolean;
-    cotizacionAfc: boolean;
+    cotizacionSalud: string;
+    cotizacionAfp: string;
+    cotizacionAfc: string;
     vacaciones: number;
     fuero: string;
 
@@ -56,6 +56,7 @@ export interface DemandaDTO {
     mesAviso?: boolean;
     finiquito: boolean;
     prestacionesAdeudadas: string[]; // códigos o nombres de prestaciones
+    materias: string[];
 
     [key: string]: string | string[] | number | Date | boolean | DemandadoSol[] | undefined;
 }

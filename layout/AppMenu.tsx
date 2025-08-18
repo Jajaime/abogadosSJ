@@ -18,15 +18,15 @@ const AppMenu = () => {
         {
             label: 'Proceso 1',
             items: [
-                { label: 'Ingresar Demanda', icon: 'pi pi-fw pi-file-import', to: '/pages/demanda', badge: 'NEW' },
-                { label: 'Demandas', icon: 'pi pi-fw pi-book', to: '/pages/demanda/list', badge: 'NEW' },
+                { label: 'Ingresar Demanda', icon: 'pi pi-fw pi-file-import', to: '/pages/demanda/new', badge: 'NEW' },
+                { label: 'Demandas', icon: 'pi pi-fw pi-book', to: '/pages/demanda/', badge: 'NEW' },
                 { label: 'Documentación', icon: 'pi pi-fw pi-folder', to: '/pages/documentacion/list', badge: 'NEW' },
             ]
         },
         {
             label: 'Mantenedores',
             items: [
-                { label: 'Usuarios', icon: 'pi pi-fw pi pi-user', to: '/pages/usuario/list', badge: 'NEW' }
+                { label: 'Usuarios', icon: 'pi pi-fw pi pi-user', to: '/pages/usuario', badge: 'NEW' }
             ]
         }
     ];
