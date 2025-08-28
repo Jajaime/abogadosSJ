@@ -63,6 +63,7 @@ const DemandaForm: React.FC = () => {
     // ---- form principal
     const [formData, setFormData] = useState<DemandaDTO>({
         // Datos del cliente
+        id:'',
         nombres: '',
         apPaterno: '',
         apMaterno: '',
@@ -109,7 +110,8 @@ const DemandaForm: React.FC = () => {
         mesAviso: false,
         finiquito: false,
         prestacionesAdeudadas: [],
-        materias: []
+        materias: [],
+        createdAt: ''
     });
 
     // ===================== Opciones de dropdowns =====================

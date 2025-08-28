@@ -10,6 +10,7 @@ export interface DemandadoSolDTO {
 // Demanda principal completa
 export interface DemandaDTO {
     // Datos del cliente demandante
+    id: string;
     nombres: string;
     apPaterno: string;
     apMaterno: string;
@@ -20,7 +21,7 @@ export interface DemandaDTO {
     estadoCivil: string;
 
     // Demandados solidarios
-    demandadoSols: DemandadoSol[];
+    demandadoSols: DemandadoSolDTO[];
 
     // Demandado principal
     nombreRazonSocial: string;
@@ -57,6 +58,7 @@ export interface DemandaDTO {
     finiquito: boolean;
     prestacionesAdeudadas: string[]; // códigos o nombres de prestaciones
     materias: string[];
+    createdAt?: string | Date; // 👈 agrega esto
 
-    [key: string]: string | string[] | number | Date | boolean | DemandadoSol[] | undefined;
+    [key: string]: string | string[] | number | Date | boolean | DemandadoSolDTO[] | undefined;
 }

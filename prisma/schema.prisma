@@ -80,6 +80,6 @@ model DemandaDocumento {
   id        String @id @default(uuid())
   nombre    String
   contenido Bytes
-  demandaId String
+  demandaId Int
   tamano   Int
 }

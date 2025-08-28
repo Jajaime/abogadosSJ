@@ -3,6 +3,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import type { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
 
 import { Button } from 'primereact/button';
 import { Column } from 'primereact/column';
@@ -11,26 +12,8 @@ import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Toast } from 'primereact/toast';
 import { Toolbar } from 'primereact/toolbar';
+import { safeSerializeDemanda, safeSerializeDemandados } from '@/utils/serializeDemanda';
 
-export interface DemandadoSolDTO {
-  id: string;
-  nombre: string;
-  rut: string;
-  domicilio: string;
-}
-
-export interface DemandaDTO {
-  id: string;
-  // Cliente
-  nombres: string;
-  apPaterno?: string;
-  apMaterno?: string;
-  run: string;
-  correoElectronico?: string;
-  // …
-  demandadoSols?: DemandadoSolDTO[];
-  createdAt?: string; // ISO opcional
-}
 
 export default function DemandasPage() {
   const router = useRouter();
@@ -93,27 +76,36 @@ export default function DemandasPage() {
 
   // ====== Documentos ======
   const handleGenerarDocumento = async (d: DemandaDTO) => {
-    try {
-      setGeneratingDoc(d.id);
-      const response = await fetch('/api/generate_doc', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          demandaId: d.id,
-          nombreArchivo: `Documento_${d.run}_${new Date().toISOString().slice(0, 10)}.docx`,
-          nombre_cliente: d.nombres,
-          run_cliente: d.run
-        })
-      });
-      const result = await response.json();
-      if (!result?.success) throw new Error(result?.error || 'Error al generar documento');
-      toast.current?.show({ severity: 'success', summary: 'Éxito', detail: 'Documento generado y guardado', life: 3000 });
-    } catch (e: any) {
-      toast.current?.show({ severity: 'error', summary: 'Error', detail: e?.message || 'Error al generar documento', life: 5000 });
-    } finally {
-      setGeneratingDoc(null);
-    }
-  };
+  try {
+    setGeneratingDoc(d.id);
+
+    const demandaPayload = safeSerializeDemanda(d);
+    const demandadosPayload = safeSerializeDemandados((d as any).demandadoSols || []);
+
+    const response = await fetch('/api/generate_doc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        // Mantén el ID (fuente de verdad del backend si luego quieres volver a cargar desde DB)
+        demandaId: d.id,
+        // Nombre archivo
+        nombreArchivo: `Documento_${d.run}_${new Date().toISOString().slice(0, 10)}.docx`,
+        // Pasa TODO tu DTO serializado:
+        demanda: demandaPayload,
+        demandadoSolidarios: demandadosPayload, // <- arreglo
+      }),
+    });
+
+    const result = await response.json();
+    if (!result?.success) throw new Error(result?.error || 'Error al generar documento');
+
+    toast.current?.show({ severity: 'success', summary: 'Éxito', detail: 'Documento generado y guardado', life: 3000 });
+  } catch (e: any) {
+    toast.current?.show({ severity: 'error', summary: 'Error', detail: e?.message || 'Error al generar documento', life: 5000 });
+  } finally {
+    setGeneratingDoc(null);
+  }
+};
 
   const handleDescargarDocumento = async (d: DemandaDTO) => {
     try {
@@ -301,9 +293,9 @@ export default function DemandasPage() {
             <Column field="createdAt" header="Creada" body={formatFecha} sortable headerStyle={{ minWidth: '14rem' }} />
 
             <Column header="Documento" body={documentoBodyTemplate} headerStyle={{ minWidth: '12rem' }} />
-            <Column header="Descargar" body={descargarBodyTemplate as any} headerStyle={{ minWidth: '12rem' }} />
+            {/*<Column header="Descargar" body={descargarBodyTemplate as any} headerStyle={{ minWidth: '12rem' }} />*/}
 
-            <Column header="Acciones" body={actionsTemplate} headerStyle={{ minWidth: '10rem' }} />
+            {/*<Column header="Acciones" body={actionsTemplate} headerStyle={{ minWidth: '10rem' }} />*/}
           </DataTable>
 
           {/* Eliminar una */}

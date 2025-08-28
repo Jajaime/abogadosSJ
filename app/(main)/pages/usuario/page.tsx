@@ -89,68 +89,7 @@ export default function UsuariosPage() {
   const goEdit = (u: UsuarioDTO) => router.push(`/pages/usuario/${u.id}/edit`);
 
   // ====== Documentos ======
-  const handleGenerarDocumento = async (usuario: UsuarioDTO) => {
-    try {
-      setGeneratingDoc(usuario.id);
-      const response = await fetch('/api/generate_doc', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          usuarioId: usuario.id,
-          nombreArchivo: `Documento_${usuario.name ?? 'Usuario'}_${new Date().toISOString().slice(0, 10)}.docx`,
-          nombre_cliente: usuario.name ?? '',
-          email: usuario.email
-        })
-      });
-      const result = await response.json();
-      if (!result?.success) throw new Error(result?.error || 'Error al generar documento');
 
-      toast.current?.show({
-        severity: 'success',
-        summary: 'Éxito',
-        detail: 'Documento generado y guardado',
-        life: 3000
-      });
-    } catch (e: any) {
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: e?.message || 'Error al generar documento',
-        life: 5000
-      });
-    } finally {
-      setGeneratingDoc(null);
-    }
-  };
-
-  const handleDescargarDocumento = async (usuario: UsuarioDTO) => {
-    try {
-      const response = await fetch(`/api/download_doc?usuarioId=${usuario.id}`);
-      if (!response.ok) throw new Error('Error al descargar el documento');
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `documento_${usuario.name ?? 'usuario'}.docx`;
-      link.click();
-      link.remove();
-
-      toast.current?.show({
-        severity: 'success',
-        summary: 'Éxito',
-        detail: 'Documento descargado',
-        life: 3000
-      });
-    } catch (e: any) {
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: e?.message || 'No se pudo descargar',
-        life: 5000
-      });
-    }
-  };
 
   // ====== Eliminar (uno) ======
   const confirmDeleteOne = (u: UsuarioDTO) => {
@@ -250,24 +189,6 @@ export default function UsuariosPage() {
     </div>
   );
 
-  const documentoBodyTemplate = (row: UsuarioDTO) => (
-    <Button
-      label="Generar DOC"
-      icon="pi pi-file-word"
-      className="p-button-help p-button-sm"
-      loading={generatingDoc === row.id}
-      onClick={() => handleGenerarDocumento(row)}
-    />
-  );
-
-  const descargarBodyTemplate = (row: UsuarioDTO) => (
-    <Button
-      label="Descargar"
-      icon="pi pi-download"
-      className="p-button-help p-button-sm"
-      onClick={() => handleDescargarDocumento(row)}
-    />
-  );
 
   // ====== Footers diálogos ======
   const deleteOneFooter = (
