@@ -19,16 +19,15 @@ model Demanda {
   nombres                    String
   apPaterno                  String
   apMaterno                  String
-  run                        String               @unique
+  run                        String               
   nacionalidad               String
   estadoCivil                String
   fechaNacimiento            DateTime
-  correoElectronico          String               @unique
+  correoElectronico          String               
+  domicilioParticular        String
   nombreRazonSocial          String
   rutRazonSocial             String
   domicilioRazonSocial       String
-  representanteLegal         String
-  runRepresentanteLegal      String
   fechaInicioRelacionLaboral DateTime?
   naturalezaContrato         String
   funciones                  String
@@ -36,7 +35,7 @@ model Demanda {
   jornada                    String
   otraJornada                String?
   registroAsistencia         Boolean
-  remuneracion               Float?
+  remuneracion               Decimal?             @db.Decimal(12, 2)
   formaPago                  String
   liquidacionSueldo          Boolean
   cotizacionSalud            String
@@ -45,27 +44,29 @@ model Demanda {
   vacaciones                 Float?
   fuero                      String
   fechaTerminoRelaLaboral    DateTime?
-  motivoTermino              String
-  tipoDespido                String
-  despidoDisciplinario       String
+  motivoTermino              String?
+  tipoDespido                String?
+  despidoDisciplinario       String?
   otroDespidoDisciplinario   String?
-  anosServicios              Boolean
-  mesAviso                   Boolean
-  finiquito                  Boolean
-  prestacionesAdeudadas      String[]
+  anosServicios              Boolean?
+  mesAviso                   Boolean?
+  finiquito                  Boolean?
+  prestacionesAdeudadas      String[]             @default([])
   createdAt                  DateTime             @default(now())
   updatedAt                  DateTime             @updatedAt
   demandadoSolidario         DemandadoSolidario[]
-  materias                  String[]
+  materias                   String[]             @default([])
 }
 
 model DemandadoSolidario {
-  id                Int     @id @default(autoincrement())
-  nombreRazonSocial String
-  rut               String  @unique
-  domicilio         String
-  demandaId         Int
-  demanda           Demanda @relation(fields: [demandaId], references: [id])
+  id                    Int     @id @default(autoincrement())
+  nombreRazonSocial     String
+  rut                   String  
+  domicilio             String
+  demandaId             Int
+  representanteLegal    String
+  runRepresentanteLegal String
+  demanda               Demanda @relation(fields: [demandaId], references: [id], onDelete: Cascade)
 }
 
 model Documento {
@@ -73,7 +74,7 @@ model Documento {
   nombre    String
   contenido Bytes
   usuarioId String
-  tamano   Int
+  tamano    Int
 }
 
 model DemandaDocumento {
@@ -81,5 +82,5 @@ model DemandaDocumento {
   nombre    String
   contenido Bytes
   demandaId Int
-  tamano   Int
+  tamano    Int
 }

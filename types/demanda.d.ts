@@ -4,6 +4,8 @@ export interface DemandadoSolDTO {
     nombre: string;
     rut: string;
     domicilio: string;
+    representanteLegal: string;
+    runRepresentanteLegal: string;
     [key: string]: string | undefined;
 }
 
@@ -19,6 +21,7 @@ export interface DemandaDTO {
     nacionalidad: string;
     correoElectronico: string;
     estadoCivil: string;
+    domicilioParticular: string;
 
     // Demandados solidarios
     demandadoSols: DemandadoSolDTO[];
@@ -55,7 +58,7 @@ export interface DemandaDTO {
     otroDespidoDisciplinario?: string;
     anosServicios?: boolean;
     mesAviso?: boolean;
-    finiquito: boolean;
+    finiquito?: boolean;
     prestacionesAdeudadas: string[]; // códigos o nombres de prestaciones
     materias: string[];
     createdAt?: string | Date; // 👈 agrega esto

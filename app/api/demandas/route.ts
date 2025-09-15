@@ -84,13 +84,12 @@ export async function POST(req: Request) {
       estadoCivil: reqStr(data.estadoCivil, 'estadoCivil'),
       fechaNacimiento: reqDate(data.fechaNacimiento, 'fechaNacimiento'),
       correoElectronico: reqStr(data.correoElectronico, 'correoElectronico'),
+      domicilioParticular: reqStr(data.domicilioParticular, 'domicilioParticular'),
 
       // Demandado principal
       nombreRazonSocial: reqStr(data.nombreRazonSocial, 'nombreRazonSocial'),
       rutRazonSocial: reqStr(data.rutRazonSocial, 'rutRazonSocial'),
       domicilioRazonSocial: reqStr(data.domicilioRazonSocial, 'domicilioRazonSocial'),
-      representanteLegal: reqStr(data.representanteLegal, 'representanteLegal'),
-      runRepresentanteLegal: reqStr(data.runRepresentanteLegal, 'runRepresentanteLegal'),
 
       // Relación laboral
       fechaInicioRelacionLaboral: dateFrom(data.fechaInicioRelacionLaboral) ?? undefined, // opcional en schema
@@ -132,7 +131,9 @@ export async function POST(req: Request) {
         create: (Array.isArray(data.demandadoSols) ? data.demandadoSols : []).map((d: any) => ({
           nombreRazonSocial: reqStr(d?.nombre, 'demandadoSols.nombre'),
           rut: reqStr(d?.rut, 'demandadoSols.rut'),
-          domicilio: reqStr(d?.domicilio, 'demandadoSols.domicilio')
+          domicilio: reqStr(d?.domicilio, 'demandadoSols.domicilio'),
+          representanteLegal: reqStr(d?.representanteLegal, 'demandadoSols.representanteLegal'),
+          runRepresentanteLegal: reqStr(d?.runRepresentanteLegal, 'demandadoSols.runRepresentanteLegal')
         }))
       }
     } as const;

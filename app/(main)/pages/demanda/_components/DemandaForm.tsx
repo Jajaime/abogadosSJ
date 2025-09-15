@@ -27,7 +27,7 @@ const stringToBoolean = (v: string | null) => v === 'Sí';
 const booleanToString = (b: boolean | null | undefined) => (b ? 'Sí' : 'No');
 
 // --- valores por defecto
-const emptyDemandadoSol: DemandadoSolDTO = { id: '', nombre: '', rut: '', domicilio: '' };
+const emptyDemandadoSol: DemandadoSolDTO = { id: '', nombre: '', rut: '', domicilio: '', representanteLegal: '', runRepresentanteLegal: '' };
 
 const DemandaForm: React.FC = () => {
     const router = useRouter();
@@ -53,6 +53,8 @@ const DemandaForm: React.FC = () => {
     const [selectedDemandadoSols, setSelectedDemandadoSols] = useState<DemandadoSolDTO[] | null>(null);
     const [submitted, setSubmitted] = useState(false);
     const [globalFilter, setGlobalFilter] = useState('');
+    const [deleteDialog, setDeleteDialog] = useState(false);
+
 
     // ---- prestaciones (MultiSelect guarda objetos; enviamos nombres)
     const [dropdownItemPrestacionesAdeudada, setDropdownItemPrestacionesAdeudada] = useState<DropdownItem[]>([]);
@@ -63,7 +65,7 @@ const DemandaForm: React.FC = () => {
     // ---- form principal
     const [formData, setFormData] = useState<DemandaDTO>({
         // Datos del cliente
-        id:'',
+        id: '',
         nombres: '',
         apPaterno: '',
         apMaterno: '',
@@ -72,6 +74,7 @@ const DemandaForm: React.FC = () => {
         nacionalidad: '',
         correoElectronico: '',
         estadoCivil: '',
+        domicilioParticular: '',
 
         // Demandados solidarios
         demandadoSols: [],
@@ -290,7 +293,7 @@ const DemandaForm: React.FC = () => {
             ...prev,
             // cliente
             nombres: '', apPaterno: '', apMaterno: '', run: '', fechaNacimiento: '',
-            nacionalidad: '', correoElectronico: '', estadoCivil: '',
+            nacionalidad: '', correoElectronico: '', estadoCivil: '', domicilioParticular: '',
             // demandados
             demandadoSols: [],
             // principal
@@ -311,14 +314,53 @@ const DemandaForm: React.FC = () => {
         setDemandadoSols([]);
         setDropdownItemPrestacionesAdeudada([]);
     };
-
+    // ===================== Submit (crear/editar) =====================
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSubmitted(true);
 
-        if (demandadoSols.length === 0) {
-            toast.current?.show({ severity: 'warn', summary: 'Validación', detail: 'Debe agregar al menos un Demandado Solidario.', life: 3500 });
+        if (!formData.nombres || 
+            !formData.apPaterno ||
+            !formData.apMaterno ||
+            !formData.run ||
+            !formData.fechaNacimiento ||
+            !formData.nacionalidad ||
+            !formData.correoElectronico ||
+            !formData.estadoCivil ||
+            !formData.domicilioParticular ||
+            !formData.nombreRazonSocial ||
+            !formData.rutRazonSocial ||
+            !formData.domicilioRazonSocial ||
+            !formData.fechaInicioRelacionLaboral ||
+            !formData.naturalezaContrato ||
+            !formData.funciones ||
+            !formData.lugar ||
+            !formData.jornada ||
+            !radioValueRegAsistencia ||
+            formData.remuneracion === null ||
+            !formData.formaPago ||
+            !radioValueLiquidacionSueldo ||
+            !formData.cotizacionSalud ||
+            !formData.cotizacionAfp ||
+            !formData.cotizacionAfc ||
+            formData.vacaciones === null ||
+            !formData.fuero ||
+            !formData.fechaTerminoRelaLaboral ||
+            !formData.motivoTermino
+        ) {
+            toast.current?.show({
+                severity: 'warn',
+                summary: 'Validación',
+                detail: 'Por favor complete los campos obligatorios.',
+                life: 4000
+            });
             return;
         }
+
+        {/*if (demandadoSols.length === 0) {
+            toast.current?.show({ severity: 'warn', summary: 'Validación', detail: 'Debe agregar al menos un Demandado Solidario.', life: 3500 });
+            return;
+        }*/}
 
         const prestacionesNombres = dropdownItemPrestacionesAdeudada.map((i) => i.name);
         const materiasNombres = generatedButtons.map(b => b.name);
@@ -373,11 +415,11 @@ const DemandaForm: React.FC = () => {
                 life: 5000
             });
             const flash = {
-  severity: 'success',
-  summary: 'Éxito',
-  detail: isEdit ? 'Demanda actualizada' : 'Demanda registrada',
-  life: 4000
-};
+                severity: 'success',
+                summary: 'Éxito',
+                detail: isEdit ? 'Demanda actualizada' : 'Demanda registrada',
+                life: 4000
+            };
 
             resetAll();
             sessionStorage.setItem('flashToast', JSON.stringify(flash));
@@ -403,6 +445,29 @@ const DemandaForm: React.FC = () => {
     const handleRemoveButton = (code: string) => {
         setGeneratedButtons((prev) => prev.filter((b) => b.code !== code));
     };
+
+    // ===================== Demandado solidario edicion/eliminacion) =====================
+    const editSelectedDemandadoSol = () => {
+        if (selectedDemandadoSols?.length === 1) {
+            setDemandadoSol(selectedDemandadoSols[0]); // carga el seleccionado al diálogo
+            setSubmitted(false);
+            setDemandadoSolDialog(true);
+        }
+    };
+
+    const confirmDeleteSelected = () => {
+        if ((selectedDemandadoSols?.length ?? 0) > 0) setDeleteDialog(true);
+    };
+
+    const deleteSelectedDemandadoSols = () => {
+        setDemandadoSols(prev =>
+            prev.filter(d => !selectedDemandadoSols?.some(s => s.id === d.id))
+        );
+        setSelectedDemandadoSols(null);
+        setDeleteDialog(false);
+        toast.current?.show({ severity: 'success', summary: 'Eliminado', detail: 'Demandado(s) eliminado(s)', life: 2500 });
+    };
+
 
     // ===================== Demandado solidario =====================
     const hideDialog = () => {
@@ -438,22 +503,45 @@ const DemandaForm: React.FC = () => {
     const nombreBodyTemplate = (row: DemandadoSolDTO) => <>{row.nombre}</>;
     const rutBodyTemplate = (row: DemandadoSolDTO) => <>{row.rut}</>;
     const domicilioBodyTemplate = (row: DemandadoSolDTO) => <>{row.domicilio}</>;
+    const representanteLegalBodyTemplate = (row: DemandadoSolDTO) => <>{row.representanteLegal}</>;
+    const rutRepresentanteLegalBodyTemplate = (row: DemandadoSolDTO) => <>{row.runRepresentanteLegal}</>;
 
-    const toolbarLeftTemplate = () => (
-        <>
-            <Button
-                label="Agregar"
-                icon="pi pi-plus"
-                onClick={() => {
-                    setDemandadoSol(emptyDemandadoSol);
-                    setDemandadoSolDialog(true);
-                }}
-                style={{ marginRight: '.5em' }}
-            />
-            <Button icon="pi pi-pencil" disabled severity="warning" style={{ marginRight: '.5em' }} />
-            <Button icon="pi pi-trash" disabled severity="danger" style={{ marginRight: '.5em' }} />
-        </>
-    );
+    const toolbarLeftTemplate = () => {
+        const canEdit = (selectedDemandadoSols?.length ?? 0) === 1;
+        const canDelete = (selectedDemandadoSols?.length ?? 0) > 0;
+
+        return (
+            <>
+                <Button
+                    label="Agregar"
+                    icon="pi pi-plus"
+                    onClick={() => {
+                        setDemandadoSol({ ...emptyDemandadoSol }); // asegúrate de que id venga vacío para crear
+                        setSubmitted(false);
+                        setDemandadoSolDialog(true);
+                    }}
+                    style={{ marginRight: '.5em' }}
+                />
+                <Button
+                    label="Editar"
+                    icon="pi pi-pencil"
+                    severity="warning"
+                    onClick={editSelectedDemandadoSol}
+                    disabled={!canEdit}
+                    style={{ marginRight: '.5em' }}
+                />
+                <Button
+                    label="Eliminar"
+                    icon="pi pi-trash"
+                    severity="danger"
+                    onClick={confirmDeleteSelected}
+                    disabled={!canDelete}
+                    style={{ marginRight: '.5em' }}
+                />
+            </>
+        );
+    };
+
 
     // ===================== Render =====================
     return (
@@ -467,22 +555,45 @@ const DemandaForm: React.FC = () => {
                         <div className="p-fluid formgrid grid">
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="nombres">Nombres</label>
-                                <InputText id="nombres" value={formData.nombres} onChange={(e) => handleChange({ target: { name: 'nombres', value: e.target.value } })} placeholder="Ingrese los nombres" />
+                                <InputText id="nombres"
+                                    value={formData.nombres}
+                                    onChange={(e) => handleChange({ target: { name: 'nombres', value: e.target.value } })}
+                                    className={classNames({ 'p-invalid': submitted && !formData.nombres })}
+                                    required
+                                    placeholder="Ingrese los nombres" />
+                                    {submitted && !formData.nombres && <small className="p-invalid">Nombres es requerido.</small>}
                             </div>
 
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="apPaterno">Apellido Paterno</label>
-                                <InputText id="apPaterno" value={formData.apPaterno} onChange={(e) => handleChange({ target: { name: 'apPaterno', value: e.target.value } })} placeholder="Ingrese apellido paterno" />
+                                <InputText 
+                                    id="apPaterno" 
+                                    value={formData.apPaterno} 
+                                    onChange={(e) => handleChange({ target: { name: 'apPaterno', value: e.target.value } })} 
+                                    placeholder="Ingrese apellido paterno" />
                             </div>
 
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="apMaterno">Apellido Materno</label>
-                                <InputText id="apMaterno" value={formData.apMaterno} onChange={(e) => handleChange({ target: { name: 'apMaterno', value: e.target.value } })} placeholder="Ingrese apellido materno" />
+                                <InputText 
+                                    id="apMaterno"
+                                    value={formData.apMaterno}
+                                    onChange={(e) => handleChange({ target: { name: 'apMaterno', value: e.target.value } })}
+                                    placeholder="Ingrese apellido materno" />
                             </div>
 
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="run">Rut/Pasaporte/Cédula</label>
-                                <InputText id="run" value={formData.run} onChange={(e) => handleChange({ target: { name: 'run', value: e.target.value } })} placeholder="Ingrese Rut/Pasaporte/Cédula" />
+                                <InputText
+                                    id="run" 
+                                    value={formData.run} 
+                                    onChange={(e) => handleChange({ target: { name: 'run', value: e.target.value } })} 
+                                    placeholder="Ingrese Rut/Pasaporte/Cédula" />
+                            </div>
+
+                            <div className="field col-12 md:col-4">
+                                <label htmlFor="domicilioParticular">Domicilio</label>
+                                <InputText id="domicilioParticular" value={formData.domicilioParticular} onChange={(e) => handleChange({ target: { name: 'domicilioParticular', value: e.target.value } })} placeholder="Domicilio" />
                             </div>
 
                             <div className="field col-12 md:col-4">
@@ -526,7 +637,7 @@ const DemandaForm: React.FC = () => {
                                 />
                             </div>
 
-                            <div className="field col-12 md:col-6">
+                            <div className="field col-12 md:col-4">
                                 <label htmlFor="email">Correo Electrónico</label>
                                 <InputText id="email" value={formData.correoElectronico} onChange={(e) => handleChange({ target: { name: 'correoElectronico', value: e.target.value } })} placeholder="ejemplo@direccion.cl" />
                             </div>
@@ -536,39 +647,32 @@ const DemandaForm: React.FC = () => {
             </div>
 
             {/* DEMANDADO PRINCIPAL */}
-            <div className="col-12 md:col-6">
-                <div className="card p-fluid">
+            <div className="col-12">
+                <div className="card">
                     <h5>DATOS DEMANDADO PRINCIPAL</h5>
+                    <div className="p-fluid formgrid grid">
+                        <div className="field col-12 md:col-4">
+                            <label htmlFor="nombreRazonSocial">Nombre Razón Social de Empresa</label>
+                            <InputText id="nombreRazonSocial" value={formData.nombreRazonSocial} onChange={(e) => handleChange({ target: { name: 'nombreRazonSocial', value: e.target.value } })} placeholder="Ingrese el Nombre Razón Social de Empresa" />
+                        </div>
 
-                    <div className="field">
-                        <label htmlFor="nombreRazonSocial">Nombre Razón Social de Empresa</label>
-                        <InputText id="nombreRazonSocial" value={formData.nombreRazonSocial} onChange={(e) => handleChange({ target: { name: 'nombreRazonSocial', value: e.target.value } })} placeholder="Ingrese el Nombre Razón Social de Empresa" />
+                        <div className="field col-12 md:col-4">
+                            <label htmlFor="rutRazonSocial">Rut</label>
+                            <InputText id="rutRazonSocial" value={formData.rutRazonSocial} onChange={(e) => handleChange({ target: { name: 'rutRazonSocial', value: e.target.value } })} placeholder="Ingrese rut" />
+                        </div>
+
+                        <div className="field col-12 md:col-4">
+                            <label htmlFor="domicilioRazonSocial">Domicilio</label>
+                            <InputText id="domicilioRazonSocial" value={formData.domicilioRazonSocial} onChange={(e) => handleChange({ target: { name: 'domicilioRazonSocial', value: e.target.value } })} placeholder="Ingrese domicilio" />
+                        </div>
+
                     </div>
 
-                    <div className="field">
-                        <label htmlFor="rutRazonSocial">Rut</label>
-                        <InputText id="rutRazonSocial" value={formData.rutRazonSocial} onChange={(e) => handleChange({ target: { name: 'rutRazonSocial', value: e.target.value } })} placeholder="Ingrese rut" />
-                    </div>
-
-                    <div className="field">
-                        <label htmlFor="domicilioRazonSocial">Domicilio</label>
-                        <InputText id="domicilioRazonSocial" value={formData.domicilioRazonSocial} onChange={(e) => handleChange({ target: { name: 'domicilioRazonSocial', value: e.target.value } })} placeholder="Ingrese domicilio" />
-                    </div>
-
-                    <div className="field">
-                        <label htmlFor="representanteLegal">Representante Legal</label>
-                        <InputText id="representanteLegal" value={formData.representanteLegal} onChange={(e) => handleChange({ target: { name: 'representanteLegal', value: e.target.value } })} placeholder="Ingrese nombre del representante legal" />
-                    </div>
-
-                    <div className="field">
-                        <label htmlFor="runRepresentanteLegal">Rut Representante Legal</label>
-                        <InputText id="runRepresentanteLegal" value={formData.runRepresentanteLegal} onChange={(e) => handleChange({ target: { name: 'runRepresentanteLegal', value: e.target.value } })} placeholder="Ingrese Rut del representante legal" />
-                    </div>
                 </div>
             </div>
 
             {/* DEMANDADOS SOLIDARIOS */}
-            <div className="col-12 md:col-6">
+            <div className="col-12">
                 <div className="card">
                     <h5>DEMANDADO SOLIDARIO</h5>
 
@@ -590,11 +694,20 @@ const DemandaForm: React.FC = () => {
                         responsiveLayout="scroll"
                         filterLocale="es"
                         paginator
+                        onRowDoubleClick={(e) => {
+                            const row = e.data as DemandadoSolDTO;
+                            setDemandadoSol(row);
+                            setSubmitted(false);
+                            setDemandadoSolDialog(true);
+                            }}
+
                     >
                         <Column selectionMode="multiple" headerStyle={{ width: '4rem' }}></Column>
                         <Column header="Razón Social" body={nombreBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
                         <Column header="RUT" body={rutBodyTemplate} headerStyle={{ minWidth: '10rem' }}></Column>
                         <Column header="Domicilio" body={domicilioBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
+                        <Column header="Representante Legal" body={representanteLegalBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
+                        <Column header="Rut Representante Legal" body={rutRepresentanteLegalBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
                     </DataTable>
 
                     <Dialog visible={demandadoSolDialog} style={{ width: '500px' }} header="Demandado Solidario" modal className="p-fluid" onHide={hideDialog}
@@ -612,6 +725,7 @@ const DemandaForm: React.FC = () => {
                                 value={demandadoSol.nombre}
                                 onChange={(e) => setDemandadoSol((p) => ({ ...p, nombre: e.target.value }))}
                                 required
+                                placeholder="Ingrese nombre de la Razón Social"
                                 autoFocus
                                 className={classNames({ 'p-invalid': submitted && !demandadoSol.nombre })}
                             />
@@ -624,6 +738,7 @@ const DemandaForm: React.FC = () => {
                                 value={demandadoSol.rut}
                                 onChange={(e) => setDemandadoSol((p) => ({ ...p, rut: e.target.value }))}
                                 required
+                                placeholder="Ingrese Rut de la Razón Social"
                                 className={classNames({ 'p-invalid': submitted && !demandadoSol.rut })}
                             />
                             {submitted && !demandadoSol.rut && <small className="p-invalid">RUT es requerido.</small>}
@@ -635,11 +750,52 @@ const DemandaForm: React.FC = () => {
                                 value={demandadoSol.domicilio}
                                 onChange={(e) => setDemandadoSol((p) => ({ ...p, domicilio: e.target.value }))}
                                 required
+                                placeholder="Ingrese domicilio de la Razón Social"
                                 className={classNames({ 'p-invalid': submitted && !demandadoSol.domicilio })}
                             />
                             {submitted && !demandadoSol.domicilio && <small className="p-invalid">Domicilio es requerido.</small>}
                         </div>
+                        <div className="field">
+                            <label htmlFor="representanteLegalDemandadoSol">Representante Legal</label>
+                            <InputText
+                                id="representanteLegalDemandadoSol"
+                                value={demandadoSol.representanteLegal}
+                                onChange={(e) => setDemandadoSol((p) => ({ ...p, representanteLegal: e.target.value }))}
+                                required
+                                placeholder="Ingrese nombre del representante legal"
+                                className={classNames({ 'p-invalid': submitted && !demandadoSol.representanteLegal })}
+                            />
+                            {submitted && !demandadoSol.representanteLegal && <small className="p-invalid">Representante Legal es requerido.</small>}
+                        </div>
+                        <div className="field">
+                            <label htmlFor="runRepresentanteLegalDemandadoSol">Rut Representante Legal</label>
+                            <InputText
+                                id="runRepresentanteLegalDemandadoSol"
+                                value={demandadoSol.runRepresentanteLegal}
+                                onChange={(e) => setDemandadoSol((p) => ({ ...p, runRepresentanteLegal: e.target.value }))}
+                                required
+                                placeholder="Ingrese Rut del representante legal"
+                                className={classNames({ 'p-invalid': submitted && !demandadoSol.runRepresentanteLegal })}
+                            />
+                            {submitted && !demandadoSol.runRepresentanteLegal && <small className="p-invalid">Rut Representante Legal es requerido.</small>}
+                        </div>
                     </Dialog>
+                    <Dialog
+                        visible={deleteDialog}
+                        style={{ width: '420px' }}
+                        header="Confirmar eliminación"
+                        modal
+                        onHide={() => setDeleteDialog(false)}
+                        footer={
+                            <>
+                                <Button label="Cancelar" icon="pi pi-times" text onClick={() => setDeleteDialog(false)} />
+                                <Button label="Eliminar" icon="pi pi-trash" severity="danger" text onClick={deleteSelectedDemandadoSols} />
+                            </>
+                        }
+                    >
+                        <p>¿Seguro que deseas eliminar el/los Demandado(s) Solidario(s) seleccionado(s)?</p>
+                    </Dialog>
+
                 </div>
             </div>
 

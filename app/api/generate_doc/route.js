@@ -8,6 +8,8 @@ import { createReport } from 'docx-templates';
 // OJO: si usas alias "@/..." en JS, asegúrate de tener jsconfig.json/tsconfig.json con "paths".
 // Si no lo tienes, cambia estos imports a rutas relativas.
 import { safeSerializeDemanda, safeSerializeDemandados } from '@/utils/serializeDemanda';
+import { decorateDemandaForDocx, decorateDemandadoSolidarioForDocx } from '@/utils/decorateDemanda';
+import { formatFechaLargaDate } from '@/utils/formatters';
 
 export const runtime = 'nodejs';
 
@@ -60,86 +62,97 @@ export async function POST(request) {
     const demandaSerializada = raw?.demanda
       ? safeSerializeDemanda(raw.demanda)
       : safeSerializeDemanda({
-          // mapeo mínimo desde DB -> DTO para que el serializador trabaje
-          // (ajusta nombres si difieren de tu schema)
-          nombres: demandaDB.nombres ?? '',
-          apPaterno: demandaDB.apPaterno ?? '',
-          apMaterno: demandaDB.apMaterno ?? '',
-          run: demandaDB.run ?? '',
-          fechaNacimiento: demandaDB.fechaNacimiento
-            ? new Date(demandaDB.fechaNacimiento).toISOString()
-            : '',
-          nacionalidad: demandaDB?.nacionalidad ?? '',
-          correoElectronico: demandaDB.correoElectronico ?? '',
-          estadoCivil: demandaDB?.estadoCivil ?? '',
+        // mapeo mínimo desde DB -> DTO para que el serializador trabaje
+        // (ajusta nombres si difieren de tu schema)
+        nombres: demandaDB.nombres ?? '',
+        apPaterno: demandaDB.apPaterno ?? '',
+        apMaterno: demandaDB.apMaterno ?? '',
+        run: demandaDB.run ?? '',
+        fechaNacimiento: demandaDB.fechaNacimiento
+          ? new Date(demandaDB.fechaNacimiento).toISOString()
+          : '',
+        nacionalidad: demandaDB?.nacionalidad ?? '',
+        correoElectronico: demandaDB.correoElectronico ?? '',
+        estadoCivil: demandaDB?.estadoCivil ?? '',
 
-          demandadoSols: Array.isArray(demandaDB?.demandadoSols)
-            ? demandaDB.demandadoSols.map((x) => ({
-                id: x.id,
-                nombre: x.nombre ?? '',
-                rut: x.rut ?? '',
-                domicilio: x.domicilio ?? '',
-              }))
-            : [],
+        demandadoSols: Array.isArray(demandaDB?.demandadoSols)
+          ? demandaDB.demandadoSols.map((x) => ({
+            id: x.id,
+            nombre: x.nombre ?? '',
+            rut: x.rut ?? '',
+            domicilio: x.domicilio ?? '',
+          }))
+          : [],
 
-          nombreRazonSocial: demandaDB?.nombreRazonSocial ?? '',
-          rutRazonSocial: demandaDB?.rutRazonSocial ?? '',
-          domicilioRazonSocial: demandaDB?.domicilioRazonSocial ?? '',
-          representanteLegal: demandaDB?.representanteLegal ?? '',
-          runRepresentanteLegal: demandaDB?.runRepresentanteLegal ?? '',
+        nombreRazonSocial: demandaDB?.nombreRazonSocial ?? '',
+        rutRazonSocial: demandaDB?.rutRazonSocial ?? '',
+        domicilioRazonSocial: demandaDB?.domicilioRazonSocial ?? '',
+        representanteLegal: demandaDB?.representanteLegal ?? '',
+        runRepresentanteLegal: demandaDB?.runRepresentanteLegal ?? '',
 
-          fechaInicioRelacionLaboral: demandaDB?.fechaInicioRelacionLaboral
-            ? new Date(demandaDB.fechaInicioRelacionLaboral).toISOString()
-            : '',
-          naturalezaContrato: demandaDB?.naturalezaContrato ?? '',
-          funciones: demandaDB?.funciones ?? '',
-          lugar: demandaDB?.lugar ?? '',
-          jornada: demandaDB?.jornada ?? '',
-          otraJornada: demandaDB?.otraJornada ?? '',
-          registroAsistencia: !!demandaDB?.registroAsistencia,
-          remuneracion: Number(demandaDB?.remuneracion) || 0,
-          formaPago: demandaDB?.formaPago ?? '',
-          liquidacionSueldo: !!demandaDB?.liquidacionSueldo,
-          cotizacionSalud: demandaDB?.cotizacionSalud ?? '',
-          cotizacionAfp: demandaDB?.cotizacionAfp ?? '',
-          cotizacionAfc: demandaDB?.cotizacionAfc ?? '',
-          vacaciones: Number(demandaDB?.vacaciones) || 0,
-          fuero: demandaDB?.fuero ?? '',
+        fechaInicioRelacionLaboral: demandaDB?.fechaInicioRelacionLaboral
+          ? new Date(demandaDB.fechaInicioRelacionLaboral).toISOString()
+          : '',
+        naturalezaContrato: demandaDB?.naturalezaContrato ?? '',
+        funciones: demandaDB?.funciones ?? '',
+        lugar: demandaDB?.lugar ?? '',
+        jornada: demandaDB?.jornada ?? '',
+        otraJornada: demandaDB?.otraJornada ?? '',
+        registroAsistencia: !!demandaDB?.registroAsistencia,
+        remuneracion: Number(demandaDB?.remuneracion) || 0,
+        formaPago: demandaDB?.formaPago ?? '',
+        liquidacionSueldo: !!demandaDB?.liquidacionSueldo,
+        cotizacionSalud: demandaDB?.cotizacionSalud ?? '',
+        cotizacionAfp: demandaDB?.cotizacionAfp ?? '',
+        cotizacionAfc: demandaDB?.cotizacionAfc ?? '',
+        vacaciones: Number(demandaDB?.vacaciones) || 0,
+        fuero: demandaDB?.fuero ?? '',
 
-          fechaTerminoRelaLaboral: demandaDB?.fechaTerminoRelaLaboral
-            ? new Date(demandaDB.fechaTerminoRelaLaboral).toISOString()
-            : '',
-          motivoTermino: demandaDB?.motivoTermino ?? '',
-          tipoDespido: demandaDB?.tipoDespido ?? '',
-          despidoDisciplinario: demandaDB?.despidoDisciplinario ?? '',
-          otroDespidoDisciplinario: demandaDB?.otroDespidoDisciplinario ?? '',
-          anosServicios: !!demandaDB?.anosServicios,
-          mesAviso: !!demandaDB?.mesAviso,
-          finiquito: !!demandaDB?.finiquito,
-          prestacionesAdeudadas: Array.isArray(demandaDB?.prestacionesAdeudadas)
-            ? demandaDB.prestacionesAdeudadas
-            : [],
-          materias: Array.isArray(demandaDB?.materias) ? demandaDB.materias : [],
-        });
+        fechaTerminoRelaLaboral: demandaDB?.fechaTerminoRelaLaboral
+          ? new Date(demandaDB.fechaTerminoRelaLaboral).toISOString()
+          : '',
+        motivoTermino: demandaDB?.motivoTermino ?? '',
+        tipoDespido: demandaDB?.tipoDespido ?? '',
+        despidoDisciplinario: demandaDB?.despidoDisciplinario ?? '',
+        otroDespidoDisciplinario: demandaDB?.otroDespidoDisciplinario ?? '',
+        anosServicios: !!demandaDB?.anosServicios,
+        mesAviso: !!demandaDB?.mesAviso,
+        finiquito: !!demandaDB?.finiquito,
+        prestacionesAdeudadas: Array.isArray(demandaDB?.prestacionesAdeudadas)
+          ? demandaDB.prestacionesAdeudadas
+          : [],
+        materias: Array.isArray(demandaDB?.materias) ? demandaDB.materias : [],
+      });
 
     const demandadosSerializados = raw?.demandadoSolidarios
       ? safeSerializeDemandados(raw.demandadoSolidarios)
       : safeSerializeDemandados(
-          Array.isArray(demandaDB?.demandadoSols)
-            ? demandaDB.demandadoSols.map((x) => ({
-                id: x.id,
-                nombre: x.nombre ?? '',
-                rut: x.rut ?? '',
-                domicilio: x.domicilio ?? '',
-              }))
-            : []
-        );
+        Array.isArray(demandaDB?.demandadoSolidario)
+          ? demandaDB.demandadoSolidario.map((x) => ({
+            id: x.id,
+            nombre: x.nombre ?? '',
+            rut: x.rut ?? '',
+            domicilio: x.domicilio ?? '',
+          }))
+          : []
+      );
+
+    // >>> AQUÍ VA TU BLOQUE NUEVO <<<
+    // 3) Data formateada para la plantilla (nombres en mayúsculas, fechas largas, RUT, CLP, etc.)
+    const demandaFmt = decorateDemandaForDocx(demandaSerializada);
+    const demandadoSolidariosFmt = (Array.isArray(demandadosSerializados) ? demandadosSerializados : [])
+      .map(decorateDemandadoSolidarioForDocx);
+
+    // (opcional) ya no uses la función antigua formatFecha() para la portada:
+    const fechaEmisionLarga = formatFechaLargaDate(new Date());
 
     // 3) Data para la plantilla DOCX
     const templateData = {
-      fechaEmision: formatFecha(new Date().toISOString()),
-      demanda: demandaSerializada,
-      demandadoSolidarios: demandadosSerializados,
+      fechaEmision: fechaEmisionLarga,
+      demanda: demandaSerializada,                 // crudo, por si lo necesitas
+      demandadoSolidarios: demandadosSerializados, // crudo
+      demandaFmt,                                  // formateado listo para imprimir
+      demandadoSolidariosFmt,                      // formateado listo para imprimir
     };
 
     // 4) Leer plantilla

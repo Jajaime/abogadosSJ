@@ -1,7 +1,6 @@
 // app/api/demandas/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { set } from 'zod/v4';
 
 export const runtime = 'nodejs';
 
@@ -52,7 +51,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         id: d.id,
         nombre: d.nombreRazonSocial,
         rut: d.rut,
-        domicilio: d.domicilio
+        domicilio: d.domicilio,
+        representanteLegal: d.representanteLegal,
+        runRepresentanteLegal: d.runRepresentanteLegal
       }))
     };
     return NextResponse.json(response, { status: 200 });
@@ -86,13 +87,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     setIfString('estadoCivil', data.estadoCivil);
     setIfDate('fechaNacimiento', data.fechaNacimiento);
     setIfString('correoElectronico', data.correoElectronico);
+    setIfString('domicilioParticular', data.domicilioParticular);
 
     // Demandado principal
     setIfString('nombreRazonSocial', data.nombreRazonSocial);
     setIfString('rutRazonSocial', data.rutRazonSocial);
     setIfString('domicilioRazonSocial', data.domicilioRazonSocial);
-    setIfString('representanteLegal', data.representanteLegal);
-    setIfString('runRepresentanteLegal', data.runRepresentanteLegal);
 
     // Relación laboral
     setIfDate('fechaInicioRelacionLaboral', data.fechaInicioRelacionLaboral);
@@ -135,8 +135,11 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
               demandaId: id,
               nombreRazonSocial: strFrom(d?.nombre),
               rut: strFrom(d?.rut),
-              domicilio: strFrom(d?.domicilio)
-            }))
+              domicilio: strFrom(d?.domicilio),
+              representanteLegal: strFrom(d?.representanteLegal),
+              runRepresentanteLegal: strFrom(d?.runRepresentanteLegal)
+            })),
+            skipDuplicates: true
           });
         }
       }
@@ -152,7 +155,9 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         id: d.id,
         nombre: d.nombreRazonSocial,
         rut: d.rut,
-        domicilio: d.domicilio
+        domicilio: d.domicilio,
+        representanteLegal: d.representanteLegal,
+        runRepresentanteLegal: d.runRepresentanteLegal
       }))
     };
 
