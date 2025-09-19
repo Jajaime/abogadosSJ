@@ -1,106 +1,346 @@
-﻿import { cookies } from 'next/headers';
-import { SignJWT, jwtVerify } from 'jose';
+import { cookies } from 'next/headers';
+import { SignJWT } from 'jose';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
-const TOKEN_COOKIE_NAME = 'auth_token';
-const DEFAULT_EXPIRATION = '12h';
-const DEFAULT_ISSUER = process.env.JWT_ISSUER ?? 'sakai-app';
-const DEFAULT_AUDIENCE = process.env.JWT_AUDIENCE ?? 'sakai-app';
+import { prisma } from '@/lib/prisma';
+import {
+    ACCESS_TOKEN_COOKIE_NAME,
+    ACCESS_TOKEN_MAX_AGE_SECONDS,
+    ACCESS_TOKEN_TTL,
+    CSRF_COOKIE_NAME,
+    CSRF_HEADER_NAME,
+    DEFAULT_AUDIENCE,
+    DEFAULT_ISSUER,
+    REFRESH_AUDIENCE,
+    REFRESH_TOKEN_COOKIE_NAME,
+    REFRESH_TOKEN_MAX_AGE_SECONDS,
+    REFRESH_TOKEN_TTL,
+    getSigningParams,
+    verifyAccessTokenJwt,
+    verifyRefreshTokenJwt
+} from '@/lib/jwt';
 
-const encoder = new TextEncoder();
-
-const getSecretKey = () => {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error('JWT_SECRET no está configurado');
-  }
-  return encoder.encode(secret);
-};
-
-export interface SessionTokenPayload {
-  userId: string;
-  email: string;
-  roles?: string[];
-}
+const isProduction = process.env.NODE_ENV === 'production';
 
 export interface SessionInfo {
-  userId: string;
-  email: string;
-  roles: string[];
+    userId: string;
+    sessionId: string;
+    roles: string[];
+    version: number;
 }
 
-export const signSessionToken = async (
-  payload: SessionTokenPayload,
-  options?: { expiresIn?: string | number }
-) => {
-  const secret = getSecretKey();
-  const expiresIn = options?.expiresIn ?? DEFAULT_EXPIRATION;
-  const roles = Array.isArray(payload.roles) ? payload.roles : [];
+interface AccessTokenPayload {
+    userId: string;
+    sessionId: string;
+    roles: string[];
+    version: number;
+}
 
-  return new SignJWT({ email: payload.email, roles })
-    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
-    .setIssuedAt()
-    .setSubject(payload.userId)
-    .setAudience(DEFAULT_AUDIENCE)
-    .setIssuer(DEFAULT_ISSUER)
-    .setExpirationTime(expiresIn)
-    .sign(secret);
+interface RefreshTokenPayload {
+    userId: string;
+    sessionId: string;
+    version: number;
+}
+
+export interface IssuedSessionTokens {
+    accessToken: string;
+    refreshToken: string;
+    csrfToken: string;
+    session: SessionInfo;
+}
+
+type CookieDescriptor = {
+    name: string;
+    value: string;
+    httpOnly: boolean;
+    secure: boolean;
+    sameSite: 'strict';
+    path: string;
+    maxAge: number;
 };
 
-export const verifySessionToken = async (token: string): Promise<SessionInfo | null> => {
-  try {
-    const secret = getSecretKey();
-    const { payload } = await jwtVerify(token, secret, {
-      issuer: DEFAULT_ISSUER,
-      audience: DEFAULT_AUDIENCE,
+const normalizeRoles = (roles?: unknown): string[] => {
+    if (!Array.isArray(roles)) return [];
+    const unique = new Set<string>();
+    for (const role of roles) {
+        if (typeof role === 'string') {
+            const trimmed = role.trim();
+            if (trimmed) unique.add(trimmed);
+        }
+    }
+    return Array.from(unique);
+};
+
+const newCsrfToken = () => randomBytes(32).toString('base64url');
+const hashRefreshToken = (token: string) => createHash('sha256').update(token).digest('hex');
+const refreshExpiryDate = () => new Date(Date.now() + REFRESH_TOKEN_MAX_AGE_SECONDS * 1000);
+
+const signAccessToken = async ({ userId, sessionId, roles, version }: AccessTokenPayload) => {
+    const { key, kid } = getSigningParams();
+    return new SignJWT({ sid: sessionId, roles, ver: version })
+        .setProtectedHeader({ alg: 'HS256', typ: 'JWT', kid })
+        .setIssuedAt()
+        .setSubject(userId)
+        .setIssuer(DEFAULT_ISSUER)
+        .setAudience(DEFAULT_AUDIENCE)
+        .setExpirationTime(ACCESS_TOKEN_TTL)
+        .sign(key);
+};
+
+const signRefreshToken = async ({ userId, sessionId, version }: RefreshTokenPayload) => {
+    const { key, kid } = getSigningParams();
+    return new SignJWT({ sid: sessionId, ver: version }).setProtectedHeader({ alg: 'HS256', typ: 'JWT', kid }).setIssuedAt().setSubject(userId).setIssuer(DEFAULT_ISSUER).setAudience(REFRESH_AUDIENCE).setExpirationTime(REFRESH_TOKEN_TTL).sign(key);
+};
+
+const buildCookie = (name: string, value: string, options: { httpOnly: boolean; maxAge: number }): CookieDescriptor => ({
+    name,
+    value,
+    httpOnly: options.httpOnly,
+    secure: isProduction,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: options.maxAge
+});
+
+export const createAccessCookie = (token: string): CookieDescriptor =>
+    buildCookie(ACCESS_TOKEN_COOKIE_NAME, token, {
+        httpOnly: true,
+        maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS
     });
 
+export const createRefreshCookie = (token: string): CookieDescriptor =>
+    buildCookie(REFRESH_TOKEN_COOKIE_NAME, token, {
+        httpOnly: true,
+        maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS
+    });
+
+export const createCsrfCookie = (token: string): CookieDescriptor => ({
+    name: CSRF_COOKIE_NAME,
+    value: token,
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS
+});
+
+export const clearAuthCookies = (): CookieDescriptor[] => [
+    buildCookie(ACCESS_TOKEN_COOKIE_NAME, '', { httpOnly: true, maxAge: 0 }),
+    buildCookie(REFRESH_TOKEN_COOKIE_NAME, '', { httpOnly: true, maxAge: 0 }),
+    {
+        name: CSRF_COOKIE_NAME,
+        value: '',
+        httpOnly: false,
+        secure: isProduction,
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 0
+    }
+];
+
+export const buildSessionCookies = (tokens: IssuedSessionTokens): CookieDescriptor[] => [createAccessCookie(tokens.accessToken), createRefreshCookie(tokens.refreshToken), createCsrfCookie(tokens.csrfToken)];
+
+const mapAccessPayloadToSession = async (payload: any): Promise<SessionInfo> => {
+    const sessionId = typeof payload.sid === 'string' ? payload.sid : null;
     const userId = typeof payload.sub === 'string' ? payload.sub : null;
-    const email = typeof payload.email === 'string' ? payload.email : '';
-    const roles = Array.isArray(payload.roles)
-      ? payload.roles.filter((role): role is string => typeof role === 'string')
-      : [];
+    const version = typeof payload.ver === 'number' ? payload.ver : Number(payload.ver);
+    if (!sessionId || !userId || Number.isNaN(version)) {
+        throw new Error('ACCESS_TOKEN_INVALID_PAYLOAD');
+    }
 
-    if (!userId) return null;
+    const record = await prisma.session.findUnique({
+        where: { id: sessionId },
+        select: { id: true, userId: true, version: true, expiresAt: true }
+    });
 
-    return { userId, email, roles };
-  } catch (error) {
-    return null;
-  }
+    if (!record || record.userId !== userId) {
+        throw new Error('SESSION_NOT_FOUND');
+    }
+    if (record.expiresAt.getTime() <= Date.now()) {
+        throw new Error('SESSION_EXPIRED');
+    }
+    if (record.version !== version) {
+        throw new Error('ACCESS_TOKEN_VERSION_MISMATCH');
+    }
+
+    const roles = normalizeRoles(payload.roles);
+    return { userId, sessionId, roles, version } satisfies SessionInfo;
+};
+
+const mapRefreshPayload = (payload: any): RefreshTokenPayload => {
+    const sessionId = typeof payload.sid === 'string' ? payload.sid : null;
+    const userId = typeof payload.sub === 'string' ? payload.sub : null;
+    const version = typeof payload.ver === 'number' ? payload.ver : Number(payload.ver);
+    if (!sessionId || !userId || Number.isNaN(version)) {
+        throw new Error('REFRESH_TOKEN_INVALID_PAYLOAD');
+    }
+    return { userId, sessionId, version } satisfies RefreshTokenPayload;
+};
+
+export const createUserSession = async (userId: string, roles: string[] = []): Promise<IssuedSessionTokens> => {
+    const normalizedRoles = normalizeRoles(roles);
+    const sessionId = randomUUID();
+    const version = 0;
+    const refreshToken = await signRefreshToken({ userId, sessionId, version });
+
+    await prisma.session.create({
+        data: {
+            id: sessionId,
+            userId,
+            version,
+            refreshTokenHash: hashRefreshToken(refreshToken),
+            expiresAt: refreshExpiryDate()
+        }
+    });
+
+    const accessToken = await signAccessToken({
+        userId,
+        sessionId,
+        roles: normalizedRoles,
+        version
+    });
+    const csrfToken = newCsrfToken();
+
+    return {
+        accessToken,
+        refreshToken,
+        csrfToken,
+        session: {
+            userId,
+            sessionId,
+            roles: normalizedRoles,
+            version
+        }
+    } satisfies IssuedSessionTokens;
+};
+
+export const rotateSessionWithRefreshToken = async (refreshToken: string): Promise<IssuedSessionTokens> => {
+    const { payload } = await verifyRefreshTokenJwt(refreshToken);
+    const input = mapRefreshPayload(payload);
+
+    const record = await prisma.session.findUnique({ where: { id: input.sessionId } });
+    if (!record || record.userId !== input.userId) {
+        throw new Error('SESSION_NOT_FOUND');
+    }
+    if (record.expiresAt.getTime() <= Date.now()) {
+        await prisma.session.delete({ where: { id: record.id } }).catch(() => undefined);
+        throw new Error('SESSION_EXPIRED');
+    }
+
+    if (record.refreshTokenHash !== hashRefreshToken(refreshToken)) {
+        throw new Error('REFRESH_TOKEN_REUSED');
+    }
+    if (record.version !== input.version) {
+        throw new Error('REFRESH_TOKEN_VERSION_MISMATCH');
+    }
+
+    const user = await prisma.usuario.findUnique({
+        where: { id: input.userId },
+        select: { id: true, roles: true }
+    });
+    if (!user) {
+        await prisma.session.delete({ where: { id: record.id } }).catch(() => undefined);
+        throw new Error('USER_NOT_FOUND');
+    }
+
+    const roles = normalizeRoles(user.roles);
+    const nextVersion = record.version + 1;
+    const newRefreshToken = await signRefreshToken({
+        userId: user.id,
+        sessionId: record.id,
+        version: nextVersion
+    });
+
+    await prisma.session.update({
+        where: { id: record.id },
+        data: {
+            version: nextVersion,
+            refreshTokenHash: hashRefreshToken(newRefreshToken),
+            expiresAt: refreshExpiryDate()
+        }
+    });
+
+    const accessToken = await signAccessToken({
+        userId: user.id,
+        sessionId: record.id,
+        roles,
+        version: nextVersion
+    });
+    const csrfToken = newCsrfToken();
+
+    return {
+        accessToken,
+        refreshToken: newRefreshToken,
+        csrfToken,
+        session: {
+            userId: user.id,
+            sessionId: record.id,
+            roles,
+            version: nextVersion
+        }
+    } satisfies IssuedSessionTokens;
+};
+
+export const revokeSession = async (sessionId: string) => {
+    await prisma.session.deleteMany({ where: { id: sessionId } });
+};
+
+export const revokeUserSessions = async (userId: string) => {
+    await prisma.session.deleteMany({ where: { userId } });
+};
+
+export const resolveSessionIdFromRefreshToken = async (refreshToken: string): Promise<string | null> => {
+    try {
+        const { payload } = await verifyRefreshTokenJwt(refreshToken);
+        const input = mapRefreshPayload(payload);
+        const record = await prisma.session.findUnique({
+            where: { id: input.sessionId },
+            select: { id: true, userId: true, refreshTokenHash: true, expiresAt: true }
+        });
+
+        if (!record || record.userId !== input.userId) return null;
+        if (record.expiresAt.getTime() <= Date.now()) return null;
+        if (record.refreshTokenHash !== hashRefreshToken(refreshToken)) return null;
+
+        return record.id;
+    } catch {
+        return null;
+    }
+};
+
+export const verifySessionToken = async (token: string): Promise<SessionInfo> => {
+    const { payload } = await verifyAccessTokenJwt(token);
+    return mapAccessPayloadToSession(payload);
 };
 
 export const getSessionFromCookies = async (): Promise<SessionInfo | null> => {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(TOKEN_COOKIE_NAME)?.value;
-  if (!token) return null;
-  return verifySessionToken(token);
+    const cookieStore = await cookies();
+    const token = cookieStore.get(ACCESS_TOKEN_COOKIE_NAME)?.value;
+    if (!token) return null;
+    try {
+        return await verifySessionToken(token);
+    } catch (error) {
+        console.warn('[AUTH] token inv�lido en cookies', error);
+        return null;
+    }
 };
 
-export const createAuthCookie = (token: string) => ({
-  name: TOKEN_COOKIE_NAME,
-  value: token,
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
-  path: '/',
-  maxAge: 60 * 60 * 12, // 12 horas
-});
-
-export const clearAuthCookie = () => ({
-  name: TOKEN_COOKIE_NAME,
-  value: '',
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
-  path: '/',
-  maxAge: 0,
-});
-
-export const requireSession = async () => {
-  const session = await getSessionFromCookies();
-  if (!session) {
-    throw new Error('UNAUTHENTICATED');
-  }
-  return session;
+export const requireSession = async (): Promise<SessionInfo> => {
+    const session = await getSessionFromCookies();
+    if (!session) {
+        throw new Error('UNAUTHENTICATED');
+    }
+    return session;
 };
 
-export { TOKEN_COOKIE_NAME };
+export const getRefreshTokenFromCookies = async (): Promise<string | null> => {
+    const cookieStore = await cookies();
+    return cookieStore.get(REFRESH_TOKEN_COOKIE_NAME)?.value ?? null;
+};
+
+export const getCsrfTokenFromCookies = async (): Promise<string | null> => {
+    const cookieStore = await cookies();
+    return cookieStore.get(CSRF_COOKIE_NAME)?.value ?? null;
+};
+
+export { ACCESS_TOKEN_COOKIE_NAME, REFRESH_TOKEN_COOKIE_NAME, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/lib/jwt';

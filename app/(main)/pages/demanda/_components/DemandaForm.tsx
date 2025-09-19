@@ -19,11 +19,9 @@ import { InputNumber } from 'primereact/inputnumber';
 import { MultiSelect } from 'primereact/multiselect';
 // imports nuevos
 import { useRut } from '@/hooks/useRut';
-
+import { apiFetch } from '@/utils/apiClient';
 
 import type { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
-
-
 
 type DropdownItem = { name: string; code: string };
 
@@ -40,10 +38,10 @@ const DemandaForm: React.FC = () => {
     const demandaId = params?.id;
     const isEdit = Boolean(demandaId);
 
-    const rutCliente = useRut();                   // para formData.run
-    const rutDemSol = useRut();                    // para demandadoSol.rut
-    const rutRepLegal = useRut();                  // para demandadoSol.runRepresentanteLegal
-    const rutEmpresa = useRut();         // 👈 empresa principal
+    const rutCliente = useRut(); // para formData.run
+    const rutDemSol = useRut(); // para demandadoSol.rut
+    const rutRepLegal = useRut(); // para demandadoSol.runRepresentanteLegal
+    const rutEmpresa = useRut(); // 👈 empresa principal
 
     const toast = useRef<Toast>(null);
     const message = useRef<Messages>(null);
@@ -64,7 +62,6 @@ const DemandaForm: React.FC = () => {
     const [submitted, setSubmitted] = useState(false);
     const [globalFilter, setGlobalFilter] = useState('');
     const [deleteDialog, setDeleteDialog] = useState(false);
-
 
     // ---- prestaciones (MultiSelect guarda objetos; enviamos nombres)
     const [dropdownItemPrestacionesAdeudada, setDropdownItemPrestacionesAdeudada] = useState<DropdownItem[]>([]);
@@ -107,9 +104,9 @@ const DemandaForm: React.FC = () => {
         remuneracion: 0,
         formaPago: '',
         liquidacionSueldo: false,
-        cotizacionSalud: '',  // <-- cambio a string para ser consistente con dropdowns (p.e. "12 meses")
-        cotizacionAfp: '',    // idem
-        cotizacionAfc: '',    // idem
+        cotizacionSalud: '', // <-- cambio a string para ser consistente con dropdowns (p.e. "12 meses")
+        cotizacionAfp: '', // idem
+        cotizacionAfc: '', // idem
         vacaciones: 0,
         fuero: '',
 
@@ -130,116 +127,187 @@ const DemandaForm: React.FC = () => {
     // ===================== Opciones de dropdowns =====================
     const dropdownItemsMateria: DropdownItem[] = useMemo(
         () => [
-            { name: 'Asignación de colación', code: '1' }, { name: 'Asignación  de experiencia', code: '2' },
-            { name: 'Asignación de locomoción', code: '3' }, { name: 'Asignación  de pérdida de caja', code: '4' },
-            { name: 'Asignación de perfeccionamiento', code: '5' }, { name: 'Asignación desgaste de harramientas', code: '6' },
-            { name: 'Asignación Familia', code: '7' }, { name: 'Asignaciónpor desempeño en cond. Difíciles', code: '8' },
-            { name: 'Asignación por responsabilidad', code: '9' }, { name: 'Asignacion especiales', code: '10' },
-            { name: 'Bonos', code: '11' }, { name: 'Comisiones', code: '12' }, { name: 'Costas', code: '13' },
-            { name: 'Cuota Sindical', code: '14' }, { name: 'Daño Moral', code: '15' }, { name: 'Descanso compensatorio', code: '16' },
-            { name: 'Descanso dominical', code: '17' }, { name: 'Despedido indirecto', code: '18' }, { name: 'Despido Injustificado', code: '19' },
-            { name: 'Feriado Legal', code: '20' }, { name: 'Feriado Progresivo', code: '21' }, { name: 'Feriado Proporcional', code: '22' },
-            { name: 'Fuero maternal', code: '23' }, { name: 'Fuero sindical', code: '24' }, { name: 'Gratificaciones legales', code: '25' },
-            { name: 'Horas Extras', code: '26' }, { name: 'Indemnización convencional', code: '27' },
+            { name: 'Asignación de colación', code: '1' },
+            { name: 'Asignación  de experiencia', code: '2' },
+            { name: 'Asignación de locomoción', code: '3' },
+            { name: 'Asignación  de pérdida de caja', code: '4' },
+            { name: 'Asignación de perfeccionamiento', code: '5' },
+            { name: 'Asignación desgaste de harramientas', code: '6' },
+            { name: 'Asignación Familia', code: '7' },
+            { name: 'Asignaciónpor desempeño en cond. Difíciles', code: '8' },
+            { name: 'Asignación por responsabilidad', code: '9' },
+            { name: 'Asignacion especiales', code: '10' },
+            { name: 'Bonos', code: '11' },
+            { name: 'Comisiones', code: '12' },
+            { name: 'Costas', code: '13' },
+            { name: 'Cuota Sindical', code: '14' },
+            { name: 'Daño Moral', code: '15' },
+            { name: 'Descanso compensatorio', code: '16' },
+            { name: 'Descanso dominical', code: '17' },
+            { name: 'Despedido indirecto', code: '18' },
+            { name: 'Despido Injustificado', code: '19' },
+            { name: 'Feriado Legal', code: '20' },
+            { name: 'Feriado Progresivo', code: '21' },
+            { name: 'Feriado Proporcional', code: '22' },
+            { name: 'Fuero maternal', code: '23' },
+            { name: 'Fuero sindical', code: '24' },
+            { name: 'Gratificaciones legales', code: '25' },
+            { name: 'Horas Extras', code: '26' },
+            { name: 'Indemnización convencional', code: '27' },
             { name: 'Indemnización de trabajadora de casa particular', code: '28' },
             { name: 'Indemnización del artículo 87 del Estatuto Docente', code: '29' },
             { name: 'Indemnización por años de servicios', code: '30' },
-            { name: 'Indemnización sustitutiva de aviso previo', code: '31' }, { name: 'Multa', code: '32' }, { name: 'Nulidad de despido', code: '33' },
-            { name: 'Otras Gratificaciones', code: '34' }, { name: 'Otras Indemnizaciones', code: '35' }, { name: 'Participación', code: '36' },
-            { name: 'Prestaciones', code: '37' }, { name: 'Recálculo de pensiones', code: '38' }, { name: 'Recargos', code: '39' },
-            { name: 'Regalías', code: '40' }, { name: 'Reincorporación', code: '41' }, { name: 'Remuneraciones', code: '42' },
-            { name: 'Semana corrida', code: '43' }, { name: 'Subterfugio', code: '44' }, { name: 'Sueldo', code: '45' },
-            { name: 'Trato', code: '46' }, { name: 'Viáticos', code: '47' }, { name: 'Desafuero Maternal', code: '48' },
-            { name: 'Desafuero Sindical', code: '49' }, { name: 'Art. 19 N° 12 CPR. Libertad de opinión e información', code: '50' },
-            { name: 'Otras Materias Sindicales', code: '51' }, { name: 'Art. 19 N° 1 Derecho a la vida y la integridad', code: '52' },
+            { name: 'Indemnización sustitutiva de aviso previo', code: '31' },
+            { name: 'Multa', code: '32' },
+            { name: 'Nulidad de despido', code: '33' },
+            { name: 'Otras Gratificaciones', code: '34' },
+            { name: 'Otras Indemnizaciones', code: '35' },
+            { name: 'Participación', code: '36' },
+            { name: 'Prestaciones', code: '37' },
+            { name: 'Recálculo de pensiones', code: '38' },
+            { name: 'Recargos', code: '39' },
+            { name: 'Regalías', code: '40' },
+            { name: 'Reincorporación', code: '41' },
+            { name: 'Remuneraciones', code: '42' },
+            { name: 'Semana corrida', code: '43' },
+            { name: 'Subterfugio', code: '44' },
+            { name: 'Sueldo', code: '45' },
+            { name: 'Trato', code: '46' },
+            { name: 'Viáticos', code: '47' },
+            { name: 'Desafuero Maternal', code: '48' },
+            { name: 'Desafuero Sindical', code: '49' },
+            { name: 'Art. 19 N° 12 CPR. Libertad de opinión e información', code: '50' },
+            { name: 'Otras Materias Sindicales', code: '51' },
+            { name: 'Art. 19 N° 1 Derecho a la vida y la integridad', code: '52' },
             { name: 'Art. 19 N° 16 CPR. Libertad de Trabajo y su protección', code: '53' },
-            { name: 'Art. 19 N° 4 Vida Privada y Honra', code: '54' }, { name: 'Art. 19 N° 5 Inviolabilidad de la comunicación privada', code: '55' },
-            { name: 'Art. 19 N° 6 CPR. Libertad de creencias', code: '56' }, { name: 'Art. 2 CT. Sobre actos de discriminación', code: '57' },
-            { name: 'Art. 485 inciso 3° CT', code: '58' }, { name: 'Accidentes Del Trabajo Y Enfermedades Profesionales', code: '59' }
+            { name: 'Art. 19 N° 4 Vida Privada y Honra', code: '54' },
+            { name: 'Art. 19 N° 5 Inviolabilidad de la comunicación privada', code: '55' },
+            { name: 'Art. 19 N° 6 CPR. Libertad de creencias', code: '56' },
+            { name: 'Art. 2 CT. Sobre actos de discriminación', code: '57' },
+            { name: 'Art. 485 inciso 3° CT', code: '58' },
+            { name: 'Accidentes Del Trabajo Y Enfermedades Profesionales', code: '59' }
         ],
         []
     );
 
     const dropdownItemsNacionalidades: DropdownItem[] = useMemo(
         () => [
-            { name: 'Afgana', code: 'AF' }, { name: 'Alemana', code: 'DE' }, { name: 'Andorrana', code: 'AD' },
-            { name: 'Angoleña', code: 'AO' }, { name: 'Argentina', code: 'AR' }, { name: 'Chilena', code: 'CL' },
-            { name: 'Colombiana', code: 'CO' }, { name: 'Peruana', code: 'PE' }, { name: 'Venezolana', code: 'VE' },
+            { name: 'Afgana', code: 'AF' },
+            { name: 'Alemana', code: 'DE' },
+            { name: 'Andorrana', code: 'AD' },
+            { name: 'Angoleña', code: 'AO' },
+            { name: 'Argentina', code: 'AR' },
+            { name: 'Chilena', code: 'CL' },
+            { name: 'Colombiana', code: 'CO' },
+            { name: 'Peruana', code: 'PE' },
+            { name: 'Venezolana', code: 'VE' }
             // ... (recorta o completa según tus necesidades)
         ],
         []
     );
 
     const dropdownItemsNatuContratos: DropdownItem[] = useMemo(
-        () => [{ name: 'Indefinido', code: '1' }, { name: 'Obra o faena', code: '2' }, { name: 'Plazo fijo', code: '3' }],
+        () => [
+            { name: 'Indefinido', code: '1' },
+            { name: 'Obra o faena', code: '2' },
+            { name: 'Plazo fijo', code: '3' }
+        ],
         []
     );
 
     const dropdownItemsFormaPagos: DropdownItem[] = useMemo(
-        () => [{ name: 'Efectivo', code: '1' }, { name: 'Transferencia', code: '2' }],
+        () => [
+            { name: 'Efectivo', code: '1' },
+            { name: 'Transferencia', code: '2' }
+        ],
         []
     );
 
     const dropdownItemsFueros: DropdownItem[] = useMemo(
         () => [
-            { name: 'Trabajadora Embarazada', code: '1' }, { name: 'Dirigente Sindical', code: '2' },
-            { name: 'Negociación Colectiva Reglada', code: '3' }, { name: 'Constitución Sindicato', code: '4' }
+            { name: 'Trabajadora Embarazada', code: '1' },
+            { name: 'Dirigente Sindical', code: '2' },
+            { name: 'Negociación Colectiva Reglada', code: '3' },
+            { name: 'Constitución Sindicato', code: '4' }
         ],
         []
     );
 
     const dropdownItemsMotivoTerminos: DropdownItem[] = useMemo(
-        () => [{ name: 'Renuncia', code: '1' }, { name: 'Mutuo Acuerdo', code: '2' }, { name: 'Despido', code: '3' }, { name: 'Autodespido', code: '4' }],
+        () => [
+            { name: 'Renuncia', code: '1' },
+            { name: 'Mutuo Acuerdo', code: '2' },
+            { name: 'Despido', code: '3' },
+            { name: 'Autodespido', code: '4' }
+        ],
         []
     );
 
     const dropdownItemsJornadaLabs: DropdownItem[] = useMemo(
         () => [
-            { name: '44 horas jornada ordinaria', code: '1' }, { name: 'siete por siete', code: '2' },
-            { name: 'diez por diez', code: '3' }, { name: 'cuatro por cuatro', code: '4' },
-            { name: 'bisemanal', code: '5' }, { name: 'jornada parcial', code: '6' }, { name: 'otra especificar', code: '7' }
+            { name: '44 horas jornada ordinaria', code: '1' },
+            { name: 'siete por siete', code: '2' },
+            { name: 'diez por diez', code: '3' },
+            { name: 'cuatro por cuatro', code: '4' },
+            { name: 'bisemanal', code: '5' },
+            { name: 'jornada parcial', code: '6' },
+            { name: 'otra especificar', code: '7' }
         ],
         []
     );
 
     const dropdownItemsEstadoCivil: DropdownItem[] = useMemo(
         () => [
-            { name: 'Soltero(a)', code: '1' }, { name: 'Casado(a)', code: '2' }, { name: 'Conviviente civil', code: '3' },
-            { name: 'Separado(a) judicialmente', code: '4' }, { name: 'Divorciado(a)', code: '5' }, { name: 'Viudo(a)', code: '6' }
+            { name: 'Soltero(a)', code: '1' },
+            { name: 'Casado(a)', code: '2' },
+            { name: 'Conviviente civil', code: '3' },
+            { name: 'Separado(a) judicialmente', code: '4' },
+            { name: 'Divorciado(a)', code: '5' },
+            { name: 'Viudo(a)', code: '6' }
         ],
         []
     );
 
-    const dropdownItemsCotizacionMeses: DropdownItem[] = useMemo(
-        () =>
-            Array.from({ length: 12 }, (_, i) => 12 - i).map((n) => ({ name: `${n} meses`, code: `${n}` })),
-        []
-    );
+    const dropdownItemsCotizacionMeses: DropdownItem[] = useMemo(() => Array.from({ length: 12 }, (_, i) => 12 - i).map((n) => ({ name: `${n} meses`, code: `${n}` })), []);
 
     const dropdownItemsTipoDespidos: DropdownItem[] = useMemo(
         () => [
-            { name: 'Disciplinario', code: '1' }, { name: 'Necesidades de la Empresa', code: '2' },
-            { name: 'Sin Causa', code: '3' }, { name: 'Término de Plazo', code: '4' }, { name: 'Término de Obra o Faena', code: '5' }
+            { name: 'Disciplinario', code: '1' },
+            { name: 'Necesidades de la Empresa', code: '2' },
+            { name: 'Sin Causa', code: '3' },
+            { name: 'Término de Plazo', code: '4' },
+            { name: 'Término de Obra o Faena', code: '5' }
         ],
         []
     );
 
     const dropdownItemsDespidoDisciplinarios: DropdownItem[] = useMemo(
         () => [
-            { name: 'Incumplimiento Grave', code: '1' }, { name: 'Ausencia Injustificadas', code: '2' },
-            { name: 'Acaso Sexual', code: '3' }, { name: 'Acoso Laboral', code: '4' },
-            { name: 'Injurias', code: '5' }, { name: 'Negociación Incompatible', code: '6' },
-            { name: 'Actos o Imprudencia Temeraria', code: '7' }, { name: 'Abandono de Trabajo', code: '8' },
-            { name: 'Falta de Probidad', code: '9' }, { name: 'Otros Especificar', code: '10' }
+            { name: 'Incumplimiento Grave', code: '1' },
+            { name: 'Ausencia Injustificadas', code: '2' },
+            { name: 'Acaso Sexual', code: '3' },
+            { name: 'Acoso Laboral', code: '4' },
+            { name: 'Injurias', code: '5' },
+            { name: 'Negociación Incompatible', code: '6' },
+            { name: 'Actos o Imprudencia Temeraria', code: '7' },
+            { name: 'Abandono de Trabajo', code: '8' },
+            { name: 'Falta de Probidad', code: '9' },
+            { name: 'Otros Especificar', code: '10' }
         ],
         []
     );
 
     const dropdownItemsPrestacionesAdeudadas: DropdownItem[] = useMemo(
         () => [
-            { name: 'Feriados', code: '1' }, { name: 'Remuneraciones', code: '2' }, { name: 'Gratificaciones', code: '3' },
-            { name: 'Indemnizaciones', code: '4' }, { name: 'Bonos', code: '5' }, { name: 'Años de Servicios', code: '6' },
-            { name: 'Horas Extraordinarias', code: '7' }, { name: 'Comisiones', code: '8' }, { name: 'Otros', code: '9' }
+            { name: 'Feriados', code: '1' },
+            { name: 'Remuneraciones', code: '2' },
+            { name: 'Gratificaciones', code: '3' },
+            { name: 'Indemnizaciones', code: '4' },
+            { name: 'Bonos', code: '5' },
+            { name: 'Años de Servicios', code: '6' },
+            { name: 'Horas Extraordinarias', code: '7' },
+            { name: 'Comisiones', code: '8' },
+            { name: 'Otros', code: '9' }
         ],
         []
     );
@@ -249,7 +317,7 @@ const DemandaForm: React.FC = () => {
         const fetchDemanda = async () => {
             if (!isEdit || !demandaId) return;
             try {
-                const res = await fetch(`/api/demandas/${demandaId}`, { cache: 'no-store' });
+                const res = await apiFetch(`/api/demandas/${demandaId}`, { cache: 'no-store' });
                 if (!res.ok) throw new Error(`No se pudo cargar la demanda (HTTP ${res.status})`);
                 const data: DemandaDTO = await res.json();
 
@@ -270,14 +338,16 @@ const DemandaForm: React.FC = () => {
                 setDropdownItemPrestacionesAdeudada(prePrest);
 
                 // al recibir data.materias: string[]
-                setGeneratedButtons((data.materias ?? []).map((n) => {
-                    const found = dropdownItemsMateria.find(o => o.name === n);
-                    return found ?? { name: n, code: n }; // fallback por si no está en catálogo
-                }));
+                setGeneratedButtons(
+                    (data.materias ?? []).map((n) => {
+                        const found = dropdownItemsMateria.find((o) => o.name === n);
+                        return found ?? { name: n, code: n }; // fallback por si no está en catálogo
+                    })
+                );
 
                 // Inicializa el hook del RUT cliente con lo traído
                 rutCliente.setValue(data.run || '');
-                rutEmpresa.setValue(data.rutRazonSocial || ''); 
+                rutEmpresa.setValue(data.rutRazonSocial || '');
                 setFormData({
                     ...data,
                     fechaNacimiento: data.fechaNacimiento || '',
@@ -297,11 +367,11 @@ const DemandaForm: React.FC = () => {
 
     // 3) Mantén formData.run en sync con el hook del cliente
     useEffect(() => {
-        setFormData(prev => ({ ...prev, run: rutCliente.value }));
+        setFormData((prev) => ({ ...prev, run: rutCliente.value }));
     }, [rutCliente.value]);
 
     useEffect(() => {
-        setFormData(prev => ({ ...prev, rutRazonSocial: rutEmpresa.value }));
+        setFormData((prev) => ({ ...prev, rutRazonSocial: rutEmpresa.value }));
     }, [rutEmpresa.value]);
 
     // 4) Al abrir/cargar el diálogo de demandado solidario, sincroniza hooks de RUT
@@ -323,19 +393,50 @@ const DemandaForm: React.FC = () => {
         setFormData((prev) => ({
             ...prev,
             // cliente
-            nombres: '', apPaterno: '', apMaterno: '', run: '', fechaNacimiento: '',
-            nacionalidad: '', correoElectronico: '', estadoCivil: '', domicilioParticular: '',
+            nombres: '',
+            apPaterno: '',
+            apMaterno: '',
+            run: '',
+            fechaNacimiento: '',
+            nacionalidad: '',
+            correoElectronico: '',
+            estadoCivil: '',
+            domicilioParticular: '',
             // demandados
             demandadoSols: [],
             // principal
-            nombreRazonSocial: '', rutRazonSocial: '', domicilioRazonSocial: '', representanteLegal: '', runRepresentanteLegal: '',
+            nombreRazonSocial: '',
+            rutRazonSocial: '',
+            domicilioRazonSocial: '',
+            representanteLegal: '',
+            runRepresentanteLegal: '',
             // relación laboral
-            fechaInicioRelacionLaboral: '', naturalezaContrato: '', funciones: '', lugar: '', jornada: '', otraJornada: '',
-            registroAsistencia: false, remuneracion: 0, formaPago: '', liquidacionSueldo: false,
-            cotizacionSalud: '', cotizacionAfp: '', cotizacionAfc: '', vacaciones: 0, fuero: '',
+            fechaInicioRelacionLaboral: '',
+            naturalezaContrato: '',
+            funciones: '',
+            lugar: '',
+            jornada: '',
+            otraJornada: '',
+            registroAsistencia: false,
+            remuneracion: 0,
+            formaPago: '',
+            liquidacionSueldo: false,
+            cotizacionSalud: '',
+            cotizacionAfp: '',
+            cotizacionAfc: '',
+            vacaciones: 0,
+            fuero: '',
             // término
-            fechaTerminoRelaLaboral: '', motivoTermino: '', tipoDespido: '', despidoDisciplinario: '', otroDespidoDisciplinario: '',
-            anosServicios: false, mesAviso: false, finiquito: false, prestacionesAdeudadas: [], materias: []
+            fechaTerminoRelaLaboral: '',
+            motivoTermino: '',
+            tipoDespido: '',
+            despidoDisciplinario: '',
+            otroDespidoDisciplinario: '',
+            anosServicios: false,
+            mesAviso: false,
+            finiquito: false,
+            prestacionesAdeudadas: [],
+            materias: []
         }));
         setRadioValueRegAsistencia(null);
         setRadioValueLiquidacionSueldo(null);
@@ -350,7 +451,8 @@ const DemandaForm: React.FC = () => {
         e.preventDefault();
         setSubmitted(true);
 
-        if (!formData.nombres ||
+        if (
+            !formData.nombres ||
             !formData.apPaterno ||
             !formData.apMaterno ||
             !formData.run ||
@@ -388,31 +490,24 @@ const DemandaForm: React.FC = () => {
             return;
         }
 
-        {/*if (demandadoSols.length === 0) {
+        {
+            /*if (demandadoSols.length === 0) {
             toast.current?.show({ severity: 'warn', summary: 'Validación', detail: 'Debe agregar al menos un Demandado Solidario.', life: 3500 });
             return;
-        }*/}
+        }*/
+        }
 
         const prestacionesNombres = dropdownItemPrestacionesAdeudada.map((i) => i.name);
-        const materiasNombres = generatedButtons.map(b => b.name);
+        const materiasNombres = generatedButtons.map((b) => b.name);
 
         const payload: DemandaDTO = {
             ...formData,
             run: rutCliente.value,
             rutRazonSocial: rutEmpresa.value,
             // fechas a ISO si hay valor Date
-            fechaNacimiento:
-                formData.fechaNacimiento instanceof Date
-                    ? (formData.fechaNacimiento as any as Date).toISOString()
-                    : formData.fechaNacimiento || '',
-            fechaInicioRelacionLaboral:
-                formData.fechaInicioRelacionLaboral instanceof Date
-                    ? (formData.fechaInicioRelacionLaboral as any as Date).toISOString()
-                    : formData.fechaInicioRelacionLaboral || '',
-            fechaTerminoRelaLaboral:
-                formData.fechaTerminoRelaLaboral instanceof Date
-                    ? (formData.fechaTerminoRelaLaboral as any as Date).toISOString()
-                    : formData.fechaTerminoRelaLaboral || '',
+            fechaNacimiento: formData.fechaNacimiento instanceof Date ? (formData.fechaNacimiento as any as Date).toISOString() : formData.fechaNacimiento || '',
+            fechaInicioRelacionLaboral: formData.fechaInicioRelacionLaboral instanceof Date ? (formData.fechaInicioRelacionLaboral as any as Date).toISOString() : formData.fechaInicioRelacionLaboral || '',
+            fechaTerminoRelaLaboral: formData.fechaTerminoRelaLaboral instanceof Date ? (formData.fechaTerminoRelaLaboral as any as Date).toISOString() : formData.fechaTerminoRelaLaboral || '',
 
             demandadoSols,
             // radios → boolean
@@ -430,7 +525,7 @@ const DemandaForm: React.FC = () => {
             const endpoint = isEdit ? `/api/demandas/${demandaId}` : '/api/demandas';
             const method = isEdit ? 'PUT' : 'POST';
 
-            const res = await fetch(endpoint, {
+            const res = await apiFetch(endpoint, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -471,7 +566,7 @@ const DemandaForm: React.FC = () => {
         const current = item ?? null;
         if (!current) return;
         const exists = generatedButtons.some((b) => b.code === current.code);
-        if (exists) return addErrorMessage();   // 👈 aquí se lanza el error
+        if (exists) return addErrorMessage(); // 👈 aquí se lanza el error
         setGeneratedButtons((prev) => [...prev, { name: current.name, code: current.code }]);
     };
 
@@ -493,14 +588,11 @@ const DemandaForm: React.FC = () => {
     };
 
     const deleteSelectedDemandadoSols = () => {
-        setDemandadoSols(prev =>
-            prev.filter(d => !selectedDemandadoSols?.some(s => s.id === d.id))
-        );
+        setDemandadoSols((prev) => prev.filter((d) => !selectedDemandadoSols?.some((s) => s.id === d.id)));
         setSelectedDemandadoSols(null);
         setDeleteDialog(false);
         toast.current?.show({ severity: 'success', summary: 'Eliminado', detail: 'Demandado(s) eliminado(s)', life: 2500 });
     };
-
 
     // ===================== Demandado solidario =====================
     const hideDialog = () => {
@@ -515,7 +607,7 @@ const DemandaForm: React.FC = () => {
         const obj = {
             ...demandadoSol,
             rut: rutDemSol.value || '',
-            runRepresentanteLegal: rutRepLegal.value || '',
+            runRepresentanteLegal: rutRepLegal.value || ''
         };
 
         if (obj.nombre?.trim() && obj.rut?.trim() && obj.domicilio?.trim()) {
@@ -539,7 +631,6 @@ const DemandaForm: React.FC = () => {
         }
     };
 
-
     const nombreBodyTemplate = (row: DemandadoSolDTO) => <>{row.nombre}</>;
     const rutBodyTemplate = (row: DemandadoSolDTO) => <>{row.rut}</>;
     const domicilioBodyTemplate = (row: DemandadoSolDTO) => <>{row.domicilio}</>;
@@ -562,26 +653,11 @@ const DemandaForm: React.FC = () => {
                     }}
                     style={{ marginRight: '.5em' }}
                 />
-                <Button
-                    label="Editar"
-                    icon="pi pi-pencil"
-                    severity="warning"
-                    onClick={editSelectedDemandadoSol}
-                    disabled={!canEdit}
-                    style={{ marginRight: '.5em' }}
-                />
-                <Button
-                    label="Eliminar"
-                    icon="pi pi-trash"
-                    severity="danger"
-                    onClick={confirmDeleteSelected}
-                    disabled={!canDelete}
-                    style={{ marginRight: '.5em' }}
-                />
+                <Button label="Editar" icon="pi pi-pencil" severity="warning" onClick={editSelectedDemandadoSol} disabled={!canEdit} style={{ marginRight: '.5em' }} />
+                <Button label="Eliminar" icon="pi pi-trash" severity="danger" onClick={confirmDeleteSelected} disabled={!canDelete} style={{ marginRight: '.5em' }} />
             </>
         );
     };
-
 
     // ===================== Render =====================
     return (
@@ -595,42 +671,30 @@ const DemandaForm: React.FC = () => {
                         <div className="p-fluid formgrid grid">
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="nombres">Nombres</label>
-                                <InputText id="nombres"
+                                <InputText
+                                    id="nombres"
                                     value={formData.nombres}
                                     onChange={(e) => handleChange({ target: { name: 'nombres', value: e.target.value } })}
                                     className={classNames({ 'p-invalid': submitted && !formData.nombres })}
                                     required
-                                    placeholder="Ingrese los nombres" />
+                                    placeholder="Ingrese los nombres"
+                                />
                                 {submitted && !formData.nombres && <small className="p-invalid">Nombres es requerido.</small>}
                             </div>
 
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="apPaterno">Apellido Paterno</label>
-                                <InputText
-                                    id="apPaterno"
-                                    value={formData.apPaterno}
-                                    onChange={(e) => handleChange({ target: { name: 'apPaterno', value: e.target.value } })}
-                                    placeholder="Ingrese apellido paterno" />
+                                <InputText id="apPaterno" value={formData.apPaterno} onChange={(e) => handleChange({ target: { name: 'apPaterno', value: e.target.value } })} placeholder="Ingrese apellido paterno" />
                             </div>
 
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="apMaterno">Apellido Materno</label>
-                                <InputText
-                                    id="apMaterno"
-                                    value={formData.apMaterno}
-                                    onChange={(e) => handleChange({ target: { name: 'apMaterno', value: e.target.value } })}
-                                    placeholder="Ingrese apellido materno" />
+                                <InputText id="apMaterno" value={formData.apMaterno} onChange={(e) => handleChange({ target: { name: 'apMaterno', value: e.target.value } })} placeholder="Ingrese apellido materno" />
                             </div>
 
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="run">Rut/Pasaporte/Cédula</label>
-                                <InputText
-                                    id="run"
-                                    value={rutCliente.value}
-                                    onChange={(e) => rutCliente.onChange(e.target.value)}
-                                    placeholder="Ingrese Rut/Pasaporte/Cédula"
-                                    className={classNames({ 'p-invalid': !!rutCliente.error })}
-                                />
+                                <InputText id="run" value={rutCliente.value} onChange={(e) => rutCliente.onChange(e.target.value)} placeholder="Ingrese Rut/Pasaporte/Cédula" className={classNames({ 'p-invalid': !!rutCliente.error })} />
                                 {rutCliente.error && <small className="p-error">{rutCliente.error}</small>}
                                 {!rutCliente.error && rutCliente.hint && <small className="p-helper">{rutCliente.hint}</small>}
                             </div>
@@ -697,30 +761,26 @@ const DemandaForm: React.FC = () => {
                     <div className="p-fluid formgrid grid">
                         <div className="field col-12 md:col-4">
                             <label htmlFor="nombreRazonSocial">Nombre Razón Social de Empresa</label>
-                            <InputText id="nombreRazonSocial" value={formData.nombreRazonSocial} onChange={(e) => handleChange({ target: { name: 'nombreRazonSocial', value: e.target.value } })} placeholder="Ingrese el Nombre Razón Social de Empresa" />
+                            <InputText
+                                id="nombreRazonSocial"
+                                value={formData.nombreRazonSocial}
+                                onChange={(e) => handleChange({ target: { name: 'nombreRazonSocial', value: e.target.value } })}
+                                placeholder="Ingrese el Nombre Razón Social de Empresa"
+                            />
                         </div>
 
                         <div className="field col-12 md:col-4">
-  <label htmlFor="rutRazonSocial">RUT Empresa</label>
-  <InputText
-    id="rutRazonSocial"
-    value={rutEmpresa.value}
-    onChange={(e) => rutEmpresa.onChange(e.target.value)}
-    placeholder="Ingrese RUT de la empresa"
-    className={classNames({ 'p-invalid': !!rutEmpresa.error })}
-  />
-  {rutEmpresa.error && <small className="p-error">{rutEmpresa.error}</small>}
-  {!rutEmpresa.error && rutEmpresa.hint && <small className="p-helper">{rutEmpresa.hint}</small>}
-</div>
-
+                            <label htmlFor="rutRazonSocial">RUT Empresa</label>
+                            <InputText id="rutRazonSocial" value={rutEmpresa.value} onChange={(e) => rutEmpresa.onChange(e.target.value)} placeholder="Ingrese RUT de la empresa" className={classNames({ 'p-invalid': !!rutEmpresa.error })} />
+                            {rutEmpresa.error && <small className="p-error">{rutEmpresa.error}</small>}
+                            {!rutEmpresa.error && rutEmpresa.hint && <small className="p-helper">{rutEmpresa.hint}</small>}
+                        </div>
 
                         <div className="field col-12 md:col-4">
                             <label htmlFor="domicilioRazonSocial">Domicilio</label>
                             <InputText id="domicilioRazonSocial" value={formData.domicilioRazonSocial} onChange={(e) => handleChange({ target: { name: 'domicilioRazonSocial', value: e.target.value } })} placeholder="Ingrese domicilio" />
                         </div>
-
                     </div>
-
                 </div>
             </div>
 
@@ -753,7 +813,6 @@ const DemandaForm: React.FC = () => {
                             setSubmitted(false);
                             setDemandadoSolDialog(true);
                         }}
-
                     >
                         <Column selectionMode="multiple" headerStyle={{ width: '4rem' }}></Column>
                         <Column header="Razón Social" body={nombreBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
@@ -763,7 +822,13 @@ const DemandaForm: React.FC = () => {
                         <Column header="Rut Representante Legal" body={rutRepresentanteLegalBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
                     </DataTable>
 
-                    <Dialog visible={demandadoSolDialog} style={{ width: '500px' }} header="Demandado Solidario" modal className="p-fluid" onHide={hideDialog}
+                    <Dialog
+                        visible={demandadoSolDialog}
+                        style={{ width: '500px' }}
+                        header="Demandado Solidario"
+                        modal
+                        className="p-fluid"
+                        onHide={hideDialog}
                         footer={
                             <>
                                 <Button label="Cancelar" icon="pi pi-times" text onClick={hideDialog} />
@@ -792,7 +857,7 @@ const DemandaForm: React.FC = () => {
                                 onChange={(e) => rutDemSol.onChange(e.target.value)}
                                 required
                                 placeholder="Ingrese Rut de la Razón Social"
-                                className={classNames({ 'p-invalid': submitted && !rutDemSol.value || !!rutDemSol.error })}
+                                className={classNames({ 'p-invalid': (submitted && !rutDemSol.value) || !!rutDemSol.error })}
                             />
                             {rutDemSol.error && <small className="p-error">{rutDemSol.error}</small>}
                         </div>
@@ -828,7 +893,7 @@ const DemandaForm: React.FC = () => {
                                 onChange={(e) => rutRepLegal.onChange(e.target.value)}
                                 required
                                 placeholder="Ingrese Rut del representante legal"
-                                className={classNames({ 'p-invalid': submitted && !rutRepLegal.value || !!rutRepLegal.error })}
+                                className={classNames({ 'p-invalid': (submitted && !rutRepLegal.value) || !!rutRepLegal.error })}
                             />
                             {rutRepLegal.error && <small className="p-error">{rutRepLegal.error}</small>}
                         </div>
@@ -848,7 +913,6 @@ const DemandaForm: React.FC = () => {
                     >
                         <p>¿Seguro que deseas eliminar el/los Demandado(s) Solidario(s) seleccionado(s)?</p>
                     </Dialog>
-
                 </div>
             </div>
 
@@ -861,7 +925,8 @@ const DemandaForm: React.FC = () => {
                             <label htmlFor="fechaInicioRelacionLaboral">Fecha Inicio Relación Laboral</label>
                             <Calendar
                                 id="fechaInicioRelacionLaboral"
-                                showIcon showButtonBar
+                                showIcon
+                                showButtonBar
                                 value={formData.fechaInicioRelacionLaboral ? new Date(formData.fechaInicioRelacionLaboral) : null}
                                 dateFormat="dd/mm/yy"
                                 onChange={(e) => handleChange({ target: { name: 'fechaInicioRelacionLaboral', value: e.value ?? null } })}
@@ -892,8 +957,6 @@ const DemandaForm: React.FC = () => {
                             <label htmlFor="funciones">Funciones</label>
                             <InputTextarea id="funciones" value={formData.funciones} onChange={(e) => handleChange({ target: { name: 'funciones', value: e.target.value } })} placeholder="Ingrese sus funciones" rows={5} cols={30} />
                         </div>
-
-                        
 
                         <div className="field col-12 md:col-4">
                             <label htmlFor="jornada">Jornada</label>
@@ -929,13 +992,7 @@ const DemandaForm: React.FC = () => {
 
                         <div className="field col-12 md:col-4">
                             <label htmlFor="remuneracion">Remuneración</label>
-                            <InputNumber
-                                id="remuneracion"
-                                mode="decimal"
-                                placeholder="especificar monto"
-                                value={formData.remuneracion}
-                                onValueChange={(e) => handleChange({ target: { name: 'remuneracion', value: e.value ?? 0 } })}
-                            />
+                            <InputNumber id="remuneracion" mode="decimal" placeholder="especificar monto" value={formData.remuneracion} onValueChange={(e) => handleChange({ target: { name: 'remuneracion', value: e.value ?? 0 } })} />
                         </div>
 
                         <div className="field col-12 md:col-4">
@@ -1022,15 +1079,7 @@ const DemandaForm: React.FC = () => {
 
                         <div className="field col-12 md:col-4">
                             <label htmlFor="fuero">Fuero</label>
-                            <Dropdown
-                                id="fuero"
-                                value={formData.fuero}
-                                onChange={(e) => handleChange({ target: { name: 'fuero', value: e.value } })}
-                                options={dropdownItemsFueros}
-                                optionLabel="name"
-                                optionValue="name"
-                                placeholder="Seleccione"
-                            />
+                            <Dropdown id="fuero" value={formData.fuero} onChange={(e) => handleChange({ target: { name: 'fuero', value: e.value } })} options={dropdownItemsFueros} optionLabel="name" optionValue="name" placeholder="Seleccione" />
                         </div>
                     </div>
                 </div>
@@ -1045,7 +1094,8 @@ const DemandaForm: React.FC = () => {
                             <label htmlFor="fechaTerminoRelaLaboral">Fecha Término Relación Laboral</label>
                             <Calendar
                                 id="fechaTerminoRelaLaboral"
-                                showIcon showButtonBar
+                                showIcon
+                                showButtonBar
                                 value={formData.fechaTerminoRelaLaboral ? new Date(formData.fechaTerminoRelaLaboral) : null}
                                 dateFormat="dd/mm/yy"
                                 onChange={(e) => handleChange({ target: { name: 'fechaTerminoRelaLaboral', value: e.value ?? null } })}
@@ -1100,7 +1150,12 @@ const DemandaForm: React.FC = () => {
                         {formData.tipoDespido === 'Disciplinario' && formData.despidoDisciplinario === 'Otros Especificar' && (
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="otroDespidoDisciplinario">Especificar:</label>
-                                <InputText id="otroDespidoDisciplinario" value={formData.otroDespidoDisciplinario} onChange={(e) => handleChange({ target: { name: 'otroDespidoDisciplinario', value: e.target.value } })} placeholder="Especificar otra motivo" />
+                                <InputText
+                                    id="otroDespidoDisciplinario"
+                                    value={formData.otroDespidoDisciplinario}
+                                    onChange={(e) => handleChange({ target: { name: 'otroDespidoDisciplinario', value: e.target.value } })}
+                                    placeholder="Especificar otra motivo"
+                                />
                             </div>
                         )}
 
@@ -1165,10 +1220,10 @@ const DemandaForm: React.FC = () => {
                 label={isEdit ? 'Actualizar Demanda' : 'Registrar Demanda'}
                 className="p-button-rounded p-button-success"
                 style={{
-                    position: "fixed",
-                    bottom: "20px",
-                    right: "20px",
-                    zIndex: 9999,
+                    position: 'fixed',
+                    bottom: '20px',
+                    right: '20px',
+                    zIndex: 9999
                 }}
                 onClick={handleSubmit as any}
             />
@@ -1184,33 +1239,19 @@ const DemandaForm: React.FC = () => {
 
                             <div className="p-fluid formgrid grid">
                                 <div className="field col-12 md:col-6">
-                                    <Dropdown
-                                        id="materia"
-                                        value={null}
-                                        options={dropdownItemsMateria}
-                                        optionLabel="name"
-                                        placeholder="Seleccione una materia"
-                                        onChange={(e) => handleAddButton(e.value)}
-                                    />
+                                    <Dropdown id="materia" value={null} options={dropdownItemsMateria} optionLabel="name" placeholder="Seleccione una materia" onChange={(e) => handleAddButton(e.value)} />
                                 </div>
                             </div>
 
                             <div className="mt-3 flex flex-wrap gap-2">
                                 {generatedButtons.map((item) => (
-                                    <Button
-                                        key={item.code}
-                                        label={item.name}
-                                        icon="pi pi-times"
-                                        className="p-button-outlined p-button-sm"
-                                        onClick={() => handleRemoveButton(item.code)}
-                                    />
+                                    <Button key={item.code} label={item.name} icon="pi pi-times" className="p-button-outlined p-button-sm" onClick={() => handleRemoveButton(item.code)} />
                                 ))}
                             </div>
                         </div>
                     </div>
                 </>
             )}
-
         </div>
     );
 };

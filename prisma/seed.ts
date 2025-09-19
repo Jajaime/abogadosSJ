@@ -1,10 +1,10 @@
-ï»¿import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('ðŸŒ± Iniciando seed...');
+  console.log('?? Iniciando seed...');
 
   const email = process.env.SEED_USER_EMAIL ?? 'demo@example.com';
   const rawPassword = process.env.SEED_USER_PASSWORD ?? 'Demo1234!';
@@ -12,22 +12,23 @@ async function main() {
 
   const demoUser = await prisma.usuario.upsert({
     where: { email },
-    update: { passwordHash, name: 'Demo User' },
+    update: { passwordHash, name: 'Demo User', roles: ['admin'] },
     create: {
       email,
       name: 'Demo User',
       passwordHash,
+      roles: ['admin'],
     },
   });
 
-  console.log(`ðŸ‘¤ Usuario seed: ${demoUser.email}`);
+  console.log(`?? Usuario seed: ${demoUser.email}`);
 
   // Demanda 1: sin demandados solidarios
   await prisma.demanda.create({
     data: {
       nombres: 'Juan',
-      apPaterno: 'PÃ©rez',
-      apMaterno: 'GonzÃ¡lez',
+      apPaterno: 'Pérez',
+      apMaterno: 'González',
       run: '12.345.678-9',
       nacionalidad: 'Chilena',
       estadoCivil: 'Casado',
@@ -55,7 +56,7 @@ async function main() {
       anosServicios: true,
       mesAviso: true,
       finiquito: false,
-      prestacionesAdeudadas: ['GratificaciÃ³n', 'Vacaciones proporcionales'],
+      prestacionesAdeudadas: ['Gratificación', 'Vacaciones proporcionales'],
       materias: ['Laboral'],
       usuarioId: demoUser.id,
     },
@@ -64,9 +65,9 @@ async function main() {
   // Demanda 2: con demandados solidarios
   await prisma.demanda.create({
     data: {
-      nombres: 'MarÃ­a',
-      apPaterno: 'LÃ³pez',
-      apMaterno: 'RamÃ­rez',
+      nombres: 'María',
+      apPaterno: 'López',
+      apMaterno: 'Ramírez',
       run: '15.987.654-3',
       nacionalidad: 'Chilena',
       estadoCivil: 'Soltera',
@@ -84,7 +85,7 @@ async function main() {
       otraJornada: 'Lunes a Viernes 09:00-13:00',
       registroAsistencia: false,
       remuneracion: new Prisma.Decimal(650000.5),
-      formaPago: 'DepÃ³sito',
+      formaPago: 'Depósito',
       liquidacionSueldo: true,
       cotizacionSalud: 'Isapre',
       cotizacionAfp: 'AFP Modelo',
@@ -97,7 +98,7 @@ async function main() {
       anosServicios: true,
       mesAviso: false,
       finiquito: true,
-      prestacionesAdeudadas: ['IndemnizaciÃ³n por aÃ±os de servicio'],
+      prestacionesAdeudadas: ['Indemnización por años de servicio'],
       materias: ['Laboral', 'Indemnizaciones'],
       usuarioId: demoUser.id,
       demandadoSolidario: {
@@ -106,7 +107,7 @@ async function main() {
             nombreRazonSocial: 'Subcontratista Norte Ltda.',
             rut: '78.111.222-3',
             domicilio: 'Av. Angamos 200, Antofagasta',
-            representanteLegal: 'Carlos SÃ¡nchez',
+            representanteLegal: 'Carlos Sánchez',
             runRepresentanteLegal: '9.876.543-2',
           },
           {
@@ -121,12 +122,12 @@ async function main() {
     },
   });
 
-  console.log('âœ… Seed completado.');
+  console.log('? Seed completado.');
 }
 
 main()
   .catch((e) => {
-    console.error('âŒ Error en seed:', e);
+    console.error('? Error en seed:', e);
     process.exit(1);
   })
   .finally(async () => {

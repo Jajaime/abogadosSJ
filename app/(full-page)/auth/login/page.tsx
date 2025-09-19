@@ -1,6 +1,7 @@
-﻿'use client';
+'use client';
 import { useRouter } from 'next/navigation';
 import React, { FormEvent, useContext, useRef, useState } from 'react';
+import { apiFetch } from '@/utils/apiClient';
 import { Checkbox } from 'primereact/checkbox';
 import { Button } from 'primereact/button';
 import { Password } from 'primereact/password';
@@ -33,10 +34,10 @@ const LoginPage = () => {
 
         try {
             setSubmitting(true);
-            const response = await fetch('/api/login', {
+            const response = await apiFetch('/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ email, password })
             });
 
             const data = await response.json().catch(() => null);

@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
+import { apiFetch } from '@/utils/apiClient';
 import { useRouter } from 'next/navigation';
 import { Button } from 'primereact/button';
 import { Column } from 'primereact/column';
@@ -16,7 +17,6 @@ import React, { useEffect, useRef, useState } from 'react';
 
 /* @todo Used 'as any' for types here. Will fix in next version due to onSelectionChange event type issue. */
 const Documentacion = () => {
-
     const router = useRouter();
 
     const [products, setProducts] = useState(null);
@@ -37,7 +37,7 @@ const Documentacion = () => {
     const [selectDemandas, setSelectDemandas] = useState([]);
 
     const fetchDemandas = async () => {
-        const response = await fetch("/api/demandas");
+        const response = await apiFetch('/api/demandas');
         const data = await response.json();
         setDemandas(data);
     };
@@ -48,20 +48,13 @@ const Documentacion = () => {
 
     // Columna para descargar documentos
     const descargarBodyTemplate = (rowData: any) => {
-        return (
-            <Button
-                label="Descargar"
-                icon="pi pi-download"
-                className="p-button-success p-button-sm"
-                onClick={() => handleDescargarDocumento(rowData.id)}
-            />
-        );
+        return <Button label="Descargar" icon="pi pi-download" className="p-button-success p-button-sm" onClick={() => handleDescargarDocumento(rowData.id)} />;
     };
 
     // Función para descargar el documento
     const handleDescargarDocumento = async (demandaId: string) => {
         try {
-            const response = await fetch(`/api/download_doc?demandaId=${demandaId}`);
+            const response = await apiFetch(`/api/download_doc?demandaId=${demandaId}`);
 
             if (!response.ok) {
                 throw new Error('Error al descargar el documento');
@@ -92,14 +85,14 @@ const Documentacion = () => {
                 severity: 'success',
                 summary: 'Éxito',
                 detail: 'Documento descargado correctamente',
-                life: 3000,
+                life: 3000
             });
         } catch (error) {
             toast.current?.show({
                 severity: 'error',
                 summary: 'Error',
                 detail: (error as any)?.message || 'Error al descargar documento',
-                life: 5000,
+                life: 5000
             });
         }
     };
@@ -109,13 +102,11 @@ const Documentacion = () => {
         router.push('/pages/demanda'); // Navega a la ruta específica
     };
 
-/*     const openNew = () => {
+    /*     const openNew = () => {
         setProduct(emptyProduct);
         setSubmitted(false);
         setProductDialog(true);
     }; */
-
-    
 
     const hideDialog = () => {
         setSubmitted(false);
@@ -224,7 +215,7 @@ const Documentacion = () => {
                         emptyMessage="No se encontraron demandas."
                         header={header}
                         responsiveLayout="scroll"
-                        filterLocale='es'
+                        filterLocale="es"
                     >
                         <Column selectionMode="multiple" headerStyle={{ width: '4rem' }}></Column>
                         <Column field="id" header="Identificador" sortable headerStyle={{ minWidth: '15rem' }}></Column>
