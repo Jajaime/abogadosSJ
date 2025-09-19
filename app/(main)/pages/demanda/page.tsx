@@ -1,18 +1,19 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import React, { useCallback, useDeferredValue, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/utils/apiClient';
-import type { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
+import type { DemandaDTO } from '@/types/demanda';
 
 import { Button } from 'primereact/button';
 import { Column } from 'primereact/column';
-import { DataTable } from 'primereact/datatable';
+import { DataTable, type DataTableFilterMeta } from 'primereact/datatable';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Toast } from 'primereact/toast';
 import { Toolbar } from 'primereact/toolbar';
+import { FilterMatchMode } from 'primereact/api';
 import { safeSerializeDemanda, safeSerializeDemandados } from '@/utils/serializeDemanda';
 
 export default function DemandasPage() {
@@ -25,6 +26,9 @@ export default function DemandasPage() {
     const deferredGlobalFilter = useDeferredValue(globalFilter);
     const [loading, setLoading] = useState(true);
     const dt = useRef<DataTable<any>>(null);
+    const filters = useMemo<DataTableFilterMeta>(() => ({
+        global: { value: deferredGlobalFilter, matchMode: FilterMatchMode.CONTAINS }
+    }), [deferredGlobalFilter]);
 
     // Toast & diálogos
     const toast = useRef<Toast>(null);
@@ -33,7 +37,7 @@ export default function DemandasPage() {
     const [demandaToDelete, setDemandaToDelete] = useState<DemandaDTO | null>(null);
 
     // Generar/descargar documentos
-    const [generatingDoc, setGeneratingDoc] = useState<string | null>(null);
+    const [generatingDoc, setGeneratingDoc] = useState<number | null>(null);
 
     // ====== Fetch ======
     const fetchDemandas = useCallback(async () => {
@@ -85,12 +89,12 @@ export default function DemandasPage() {
     const goEdit = (d: DemandaDTO) => router.push(`/pages/demanda/${d.id}/edit`);
 
     // ====== Documentos ======
-    const handleGenerarDocumento = async (d: DemandaDTO) => {
+    const handleGenerarDocumento = useCallback(async (d: DemandaDTO) => {
         try {
             setGeneratingDoc(d.id);
 
             const demandaPayload = safeSerializeDemanda(d);
-            const demandadosPayload = safeSerializeDemandados((d as any).demandadoSols || []);
+            const demandadosPayload = safeSerializeDemandados(d.demandadoSols ?? []);
 
             const response = await apiFetch('/api/generate_doc', {
                 method: 'POST',
@@ -120,9 +124,9 @@ export default function DemandasPage() {
         } finally {
             setGeneratingDoc(null);
         }
-    };
+    }, [router]);
 
-    const handleDescargarDocumento = async (d: DemandaDTO) => {
+    const handleDescargarDocumento = useCallback(async (d: DemandaDTO) => {
         try {
             const response = await apiFetch(`/api/download_doc?demandaId=${d.id}`);
             if (response.status === 401) {
@@ -145,11 +149,16 @@ export default function DemandasPage() {
         } catch (e: any) {
             toast.current?.show({ severity: 'error', summary: 'Error', detail: e?.message || 'No se pudo descargar', life: 5000 });
         }
-    };
+    }, [router]);
 
-    const documentoBodyTemplate = (row: DemandaDTO) => <Button label="Generar DOC" icon="pi pi-file-word" className="p-button-primary p-button-sm" loading={generatingDoc === row.id} onClick={() => handleGenerarDocumento(row)} />;
+    const documentoBodyTemplate = useCallback((row: DemandaDTO) => (
+        <Button label="Generar DOC" icon="pi pi-file-word" className="p-button-primary p-button-sm" loading={generatingDoc === row.id} onClick={() => handleGenerarDocumento(row)} />
+    ), [generatingDoc, handleGenerarDocumento]);
 
-    const descargarBodyTemplate = (row: DemandaDTO) => <Button label="Descargar" icon="pi pi-download" className="p-button-help p-button-sm" onClick={() => handleDescargarDocumento(row)} />;
+    const descargarBodyTemplate = useCallback((row: DemandaDTO) => (
+        <Button label="Descargar" icon="pi pi-download" className="p-button-help p-button-sm" onClick={() => handleDescargarDocumento(row)} />
+    ), [handleDescargarDocumento]);
+
 
     // ====== Eliminar (uno) ======
     const confirmDeleteOne = (d: DemandaDTO) => {
@@ -205,7 +214,7 @@ export default function DemandasPage() {
             <h5 className="m-0">DEMANDAS</h5>
             <span className="block mt-2 md:mt-0 p-input-icon-left">
                 <i className="pi pi-search" />
-                <InputText type="search" onInput={(e) => setGlobalFilter(e.currentTarget.value)} placeholder="Buscar..." aria-label="Buscar demanda" />
+                <InputText type="search" value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} placeholder="Buscar..." aria-label="Buscar demanda" />
             </span>
         </div>
     );
@@ -274,7 +283,8 @@ export default function DemandasPage() {
                         className="datatable-responsive"
                         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                         currentPageReportTemplate="Mostrando {first} al {last} de {totalRecords} demandas"
-                        globalFilter={deferredGlobalFilter}
+                        filters={filters}
+                        globalFilterFields={['nombres', 'apPaterno', 'apMaterno', 'run', 'correoElectronico', 'nombreRazonSocial', 'rutRazonSocial']}
                         emptyMessage="No se encontraron demandas."
                         header={header}
                         responsiveLayout="scroll"

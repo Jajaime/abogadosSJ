@@ -4,19 +4,19 @@
  * Serializadores y formateadores para DemandaDTO y DemandadoSolDTO
  * - Normaliza fechas a ISO y agrega formatos dd-mm-yyyy
  * - Aplana opciones {name, code} -> string (toma .name)
- * - Convierte booleanos a "SÃ­/No"
- * - Formatea remuneraciÃ³n con separadores para es-CL
- * - Deja arrays como CSV y tambiÃ©n listos para loops en docx-templates
+ * - Convierte booleanos a "Sí/No"
+ * - Formatea remuneración con separadores para es-CL
+ * - Deja arrays como CSV y también listos para loops en docx-templates
  */
 
 import type { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
 
-// ------------------ Helpers de normalizaciÃ³n ------------------
+// ------------------ Helpers de normalización ------------------
 
 const toISO = (v: unknown) => {
   if (!v) return '';
   if (v instanceof Date) return v.toISOString();
-  // Si viene como string pero es fecha vÃ¡lida, conserva como ISO
+  // Si viene como string pero es fecha válida, conserva como ISO
   const d = new Date(v as string);
   return isNaN(d.getTime()) ? String(v) : d.toISOString();
 };
@@ -39,20 +39,26 @@ const readMaybeOption = (v: unknown) => {
   return (v as string) ?? '';
 };
 
-// textos SÃ­/No para booleanos, Ãºtil en doc
-const yesNo = (b: unknown) => (b ? 'SÃ­' : 'No');
+// textos Sí/No para booleanos, útil en doc
+const yesNo = (b: unknown) => (b ? 'Sí' : 'No');
 
 // formato de miles para CLP/num
 const formatMoney = (n: unknown) => {
   const value = typeof n === 'number' ? n : Number(n);
   if (isNaN(value)) return '';
-  return value.toLocaleString('es-CL'); // â€œ1.234.567â€
+  return value.toLocaleString('es-CL'); // “1.234.567”
 };
 
-// uniÃ³n por coma simple (y espacio)
+// unión por coma simple (y espacio)
 const joinCSV = (arr?: string[]) =>
   Array.isArray(arr) ? arr.filter(Boolean).join(', ') : '';
 
+const toNumberOrNull = (value: unknown) => {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
 // normaliza demandados para plantilla/loops
 export function safeSerializeDemandados(list: DemandadoSolDTO[] = []) {
   const toStringOrEmpty = (value: unknown) => {
@@ -92,6 +98,8 @@ export function safeSerializeDemanda(d: DemandaDTO) {
   const fnacISO = toISO(d.fechaNacimiento);
   const finicioISO = toISO(d.fechaInicioRelacionLaboral);
   const fterminoISO = toISO(d.fechaTerminoRelaLaboral);
+  const remuneracionNumber = toNumberOrNull(d.remuneracion);
+  const vacacionesNumber = toNumberOrNull(d.vacaciones);
 
   return {
     // --- Campos en crudo, ya normalizados a string/number/boolean ---
@@ -117,15 +125,13 @@ export function safeSerializeDemanda(d: DemandaDTO) {
     jornada: d.jornada ?? '',
     otraJornada: d.otraJornada ?? '',
     registroAsistencia: !!d.registroAsistencia,
-    remuneracion:
-      typeof d.remuneracion === 'number' ? d.remuneracion : Number(d.remuneracion) || 0,
+    remuneracion: remuneracionNumber,
     formaPago: d.formaPago ?? '',
     liquidacionSueldo: !!d.liquidacionSueldo,
     cotizacionSalud: d.cotizacionSalud ?? '',
     cotizacionAfp: d.cotizacionAfp ?? '',
     cotizacionAfc: d.cotizacionAfc ?? '',
-    vacaciones:
-      typeof d.vacaciones === 'number' ? d.vacaciones : Number(d.vacaciones) || 0,
+    vacaciones: vacacionesNumber,
     fuero: d.fuero ?? '',
 
     fechaTerminoRelaLaboral: fterminoISO,
@@ -139,7 +145,7 @@ export function safeSerializeDemanda(d: DemandaDTO) {
     prestacionesAdeudadas: Array.isArray(d.prestacionesAdeudadas) ? d.prestacionesAdeudadas : [],
     materias: Array.isArray(d.materias) ? d.materias : [],
 
-    // --- Derivados FÃCILES para usar en DOCX ---
+    // --- Derivados FÁCILES para usar en DOCX ---
     // Fechas legibles
     fechaNacimientoFmt: formatDDMMYYYY(fnacISO),
     fechaInicioRelacionLaboralFmt: formatDDMMYYYY(finicioISO),
@@ -152,14 +158,14 @@ export function safeSerializeDemanda(d: DemandaDTO) {
     mesAvisoTxt: yesNo(d.mesAviso),
     finiquitoTxt: yesNo(d.finiquito),
 
-    // RemuneraciÃ³n con miles
-    remuneracionCLP: formatMoney(d.remuneracion),
+    // Remuneración con miles
+    remuneracionCLP: remuneracionNumber != null ? formatMoney(remuneracionNumber) : '',
 
-    // Arrays como CSV (Ãºtil si en el doc pones una sola lÃ­nea)
+    // Arrays como CSV (útil si en el doc pones una sola línea)
     prestacionesAdeudadasCSV: joinCSV(d.prestacionesAdeudadas),
     materiasCSV: joinCSV(d.materias),
 
-    // NOTA: tambiÃ©n quedan listas â€œloopablesâ€ sin tocar para docx-templates:
+    // NOTA: también quedan listas “loopables” sin tocar para docx-templates:
     // {#demandadoSols}{nombre} - {rut} - {domicilio}{/demandadoSols}
     // {#prestacionesAdeudadas}{.}{/prestacionesAdeudadas}
     // {#materias}{.}{/materias}
@@ -176,3 +182,5 @@ export const formatters = {
   joinCSV,
   readMaybeOption,
 };
+
+

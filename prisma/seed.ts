@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('?? Iniciando seed...');
+  console.log('ðŸš€ Iniciando seed...');
 
   const email = process.env.SEED_USER_EMAIL ?? 'demo@example.com';
   const rawPassword = process.env.SEED_USER_PASSWORD ?? 'Demo1234!';
@@ -21,14 +21,14 @@ async function main() {
     },
   });
 
-  console.log(`?? Usuario seed: ${demoUser.email}`);
+  console.log(`ðŸ‘¤ Usuario seed: ${demoUser.email}`);
 
   // Demanda 1: sin demandados solidarios
   await prisma.demanda.create({
     data: {
       nombres: 'Juan',
-      apPaterno: 'Pérez',
-      apMaterno: 'González',
+      apPaterno: 'PÃ©rez',
+      apMaterno: 'GonzÃ¡lez',
       run: '12.345.678-9',
       nacionalidad: 'Chilena',
       estadoCivil: 'Casado',
@@ -56,7 +56,7 @@ async function main() {
       anosServicios: true,
       mesAviso: true,
       finiquito: false,
-      prestacionesAdeudadas: ['Gratificación', 'Vacaciones proporcionales'],
+      prestacionesAdeudadas: ['GratificaciÃ³n', 'Vacaciones proporcionales'],
       materias: ['Laboral'],
       usuarioId: demoUser.id,
     },
@@ -65,9 +65,9 @@ async function main() {
   // Demanda 2: con demandados solidarios
   await prisma.demanda.create({
     data: {
-      nombres: 'María',
-      apPaterno: 'López',
-      apMaterno: 'Ramírez',
+      nombres: 'MarÃ­a',
+      apPaterno: 'LÃ³pez',
+      apMaterno: 'RamÃ­rez',
       run: '15.987.654-3',
       nacionalidad: 'Chilena',
       estadoCivil: 'Soltera',
@@ -85,7 +85,7 @@ async function main() {
       otraJornada: 'Lunes a Viernes 09:00-13:00',
       registroAsistencia: false,
       remuneracion: new Prisma.Decimal(650000.5),
-      formaPago: 'Depósito',
+      formaPago: 'DepÃ³sito',
       liquidacionSueldo: true,
       cotizacionSalud: 'Isapre',
       cotizacionAfp: 'AFP Modelo',
@@ -98,7 +98,7 @@ async function main() {
       anosServicios: true,
       mesAviso: false,
       finiquito: true,
-      prestacionesAdeudadas: ['Indemnización por años de servicio'],
+      prestacionesAdeudadas: ['IndemnizaciÃ³n por aÃ±os de servicio'],
       materias: ['Laboral', 'Indemnizaciones'],
       usuarioId: demoUser.id,
       demandadoSolidario: {
@@ -107,7 +107,7 @@ async function main() {
             nombreRazonSocial: 'Subcontratista Norte Ltda.',
             rut: '78.111.222-3',
             domicilio: 'Av. Angamos 200, Antofagasta',
-            representanteLegal: 'Carlos Sánchez',
+            representanteLegal: 'Carlos SÃ¡nchez',
             runRepresentanteLegal: '9.876.543-2',
           },
           {
@@ -122,12 +122,12 @@ async function main() {
     },
   });
 
-  console.log('? Seed completado.');
+  console.log('âœ… Seed completado.');
 }
 
 main()
   .catch((e) => {
-    console.error('? Error en seed:', e);
+    console.error('âŒ Error en seed:', e);
     process.exit(1);
   })
   .finally(async () => {

@@ -1,19 +1,18 @@
 // Demandado solidario
 export interface DemandadoSolDTO {
-    id?: string;
-    nombreRazonSocial?: string;
-    nombre?: string;
+    id?: number | string | null;
+    nombreRazonSocial: string;
     rut: string;
     domicilio: string;
     representanteLegal: string;
     runRepresentanteLegal: string;
-    [key: string]: string | undefined;
+    [key: string]: string | number | null | undefined;
 }
 
 // Demanda principal completa
 export interface DemandaDTO {
     // Datos del cliente demandante
-    id: string;
+    id: number;
     usuarioId?: string;
     nombres: string;
     apPaterno: string;
@@ -36,34 +35,35 @@ export interface DemandaDTO {
     runRepresentanteLegal: string;
 
     // Relación laboral
-    fechaInicioRelacionLaboral: string | Date;
+    fechaInicioRelacionLaboral: string | Date | null;
     naturalezaContrato: string;
     funciones: string;
     lugar: string;
     jornada: string;
-    otraJornada?: string;
+    otraJornada?: string | null;
     registroAsistencia: boolean;
-    remuneracion: number;
+    remuneracion: number | null;
     formaPago: string;
     liquidacionSueldo: boolean;
     cotizacionSalud: string;
     cotizacionAfp: string;
     cotizacionAfc: string;
-    vacaciones: number;
+    vacaciones: number | null;
     fuero: string;
 
     // Término de relación laboral
-    fechaTerminoRelaLaboral: string | Date;
+    fechaTerminoRelaLaboral: string | Date | null;
     motivoTermino: string;
-    tipoDespido?: string;
-    despidoDisciplinario?: string;
-    otroDespidoDisciplinario?: string;
+    tipoDespido?: string | null;
+    despidoDisciplinario?: string | null;
+    otroDespidoDisciplinario?: string | null;
     anosServicios?: boolean;
     mesAviso?: boolean;
     finiquito?: boolean;
     prestacionesAdeudadas: string[]; // códigos o nombres de prestaciones
     materias: string[];
-    createdAt?: string | Date; // 👈 agrega esto
+    createdAt?: string | Date;
 
-    [key: string]: string | string[] | number | Date | boolean | DemandadoSolDTO[] | undefined;
+    [key: string]: unknown;
 }
+

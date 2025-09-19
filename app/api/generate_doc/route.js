@@ -1,4 +1,4 @@
-﻿// app/api/generate_doc/route.js
+// app/api/generate_doc/route.js
 import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs/promises';
@@ -17,6 +17,11 @@ export const runtime = 'nodejs';
 
 const MAX_DOCUMENT_SIZE = 2 * 1024 * 1024; // 2MB
 const SAFE_FILENAME_REGEX = /^[^<>:"/\\|?*\r\n]+$/;
+const numberOrNull = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
 
 const debug = (...args) => {
   if (process.env.NODE_ENV !== 'production') {
@@ -147,84 +152,93 @@ export async function POST(request) {
       ? demandaDB.demandadoSolidario
       : [];
 
-    // 3) SOLO usa lo del body si es un array con elementos; si viene vacío o inexistente, usa DB
     const bodySolidarios = Array.isArray(bodyDemandados) ? bodyDemandados : [];
     const bodyHasSolidarios = bodySolidarios.length > 0;
     const sourceSolidarios = bodyHasSolidarios ? bodySolidarios : demandadoSolidariosDB;
 
-    // 2) Tomar del BODY (si viene) o mapear desde DB y serializar SIEMPRE
+    const baseDemanda = {
+      nombres: demandaDB.nombres ?? '',
+      apPaterno: demandaDB.apPaterno ?? '',
+      apMaterno: demandaDB.apMaterno ?? '',
+      run: demandaDB.run ?? '',
+      fechaNacimiento: demandaDB.fechaNacimiento
+        ? new Date(demandaDB.fechaNacimiento).toISOString()
+        : '',
+      nacionalidad: demandaDB?.nacionalidad ?? '',
+      correoElectronico: demandaDB.correoElectronico ?? '',
+      estadoCivil: demandaDB?.estadoCivil ?? '',
+      domicilioParticular: demandaDB.domicilioParticular ?? '',
+      demandadoSols: sourceSolidarios,
+      nombreRazonSocial: demandaDB?.nombreRazonSocial ?? '',
+      rutRazonSocial: demandaDB?.rutRazonSocial ?? '',
+      domicilioRazonSocial: demandaDB?.domicilioRazonSocial ?? '',
+      representanteLegal: demandaDB?.representanteLegal ?? '',
+      runRepresentanteLegal: demandaDB?.runRepresentanteLegal ?? '',
+      fechaInicioRelacionLaboral: demandaDB?.fechaInicioRelacionLaboral
+        ? new Date(demandaDB.fechaInicioRelacionLaboral).toISOString()
+        : '',
+      naturalezaContrato: demandaDB?.naturalezaContrato ?? '',
+      funciones: demandaDB?.funciones ?? '',
+      lugar: demandaDB?.lugar ?? '',
+      jornada: demandaDB?.jornada ?? '',
+      otraJornada: demandaDB?.otraJornada ?? '',
+      registroAsistencia: !!demandaDB?.registroAsistencia,
+      remuneracion: numberOrNull(demandaDB?.remuneracion),
+      formaPago: demandaDB?.formaPago ?? '',
+      liquidacionSueldo: !!demandaDB?.liquidacionSueldo,
+      cotizacionSalud: demandaDB?.cotizacionSalud ?? '',
+      cotizacionAfp: demandaDB?.cotizacionAfp ?? '',
+      cotizacionAfc: demandaDB?.cotizacionAfc ?? '',
+      vacaciones: numberOrNull(demandaDB?.vacaciones),
+      fuero: demandaDB?.fuero ?? '',
+      fechaTerminoRelaLaboral: demandaDB?.fechaTerminoRelaLaboral
+        ? new Date(demandaDB.fechaTerminoRelaLaboral).toISOString()
+        : '',
+      motivoTermino: demandaDB?.motivoTermino ?? '',
+      tipoDespido: demandaDB?.tipoDespido ?? '',
+      despidoDisciplinario: demandaDB?.despidoDisciplinario ?? '',
+      otroDespidoDisciplinario: demandaDB?.otroDespidoDisciplinario ?? '',
+      anosServicios: !!demandaDB?.anosServicios,
+      mesAviso: !!demandaDB?.mesAviso,
+      finiquito: !!demandaDB?.finiquito,
+      prestacionesAdeudadas: Array.isArray(demandaDB?.prestacionesAdeudadas)
+        ? demandaDB.prestacionesAdeudadas
+        : [],
+      materias: Array.isArray(demandaDB?.materias) ? demandaDB.materias : [],
+    };
+
     const demandaOverride = demanda ? { ...demanda } : undefined;
-    if (demandaOverride && !Array.isArray(demandaOverride.demandadoSols)) {
-      demandaOverride.demandadoSols = sourceSolidarios;
+    const overrideSolidarios = demandaOverride?.demandadoSols;
+    const mergedDemandadoSols = Array.isArray(overrideSolidarios)
+      ? overrideSolidarios
+      : sourceSolidarios;
+
+    const cleanedOverride = demandaOverride
+      ? Object.fromEntries(
+          Object.entries(demandaOverride).filter(([key, value]) => key !== 'demandadoSols' && value !== undefined)
+        )
+      : undefined;
+
+    const demandaMerged = cleanedOverride
+      ? { ...baseDemanda, ...cleanedOverride, demandadoSols: mergedDemandadoSols }
+      : { ...baseDemanda, demandadoSols: mergedDemandadoSols };
+
+    const demandaSerializada = safeSerializeDemanda(demandaMerged);
+    const missingBaseFields = ['nombres', 'apPaterno', 'apMaterno', 'run', 'nombreRazonSocial', 'rutRazonSocial']
+      .filter((field) => !demandaSerializada[field]);
+
+    if (missingBaseFields.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Faltan datos obligatorios para generar el documento',
+          detail: `Campos requeridos sin valor: ${missingBaseFields.join(', ')}`,
+        },
+        { status: 422 }
+      );
     }
 
-    const demandaSerializada = demandaOverride
-      ? safeSerializeDemanda(demandaOverride)
-      : safeSerializeDemanda({
-        // mapeo mínimo desde DB -> DTO para que el serializador trabaje
-        // (ajusta nombres si difieren de tu schema)
-        nombres: demandaDB.nombres ?? '',
-        apPaterno: demandaDB.apPaterno ?? '',
-        apMaterno: demandaDB.apMaterno ?? '',
-        run: demandaDB.run ?? '',
-        fechaNacimiento: demandaDB.fechaNacimiento
-          ? new Date(demandaDB.fechaNacimiento).toISOString()
-          : '',
-        nacionalidad: demandaDB?.nacionalidad ?? '',
-        correoElectronico: demandaDB.correoElectronico ?? '',
-        estadoCivil: demandaDB?.estadoCivil ?? '',
-        domicilioParticular: demandaDB.domicilioParticular ?? '',
-
-        demandadoSols: Array.isArray(demandaDB?.demandadoSolidario)
-          ? demandaDB.demandadoSolidario.map((x) => ({
-            id: x.id,
-            nombreRazonSocial: x.nombreRazonSocial ?? '',
-            rut: x.rut ?? '',
-            domicilio: x.domicilio ?? '',
-            representanteLegal: x.representanteLegal ?? '',
-            runRepresentanteLegal: x.runRepresentanteLegal ?? '',
-          }))
-          : [],
-
-        nombreRazonSocial: demandaDB?.nombreRazonSocial ?? '',
-        rutRazonSocial: demandaDB?.rutRazonSocial ?? '',
-        domicilioRazonSocial: demandaDB?.domicilioRazonSocial ?? '',
-
-        fechaInicioRelacionLaboral: demandaDB?.fechaInicioRelacionLaboral
-          ? new Date(demandaDB.fechaInicioRelacionLaboral).toISOString()
-          : '',
-        naturalezaContrato: demandaDB?.naturalezaContrato ?? '',
-        funciones: demandaDB?.funciones ?? '',
-        lugar: demandaDB?.lugar ?? '',
-        jornada: demandaDB?.jornada ?? '',
-        otraJornada: demandaDB?.otraJornada ?? '',
-        registroAsistencia: !!demandaDB?.registroAsistencia,
-        remuneracion: Number(demandaDB?.remuneracion) || 0,
-        formaPago: demandaDB?.formaPago ?? '',
-        liquidacionSueldo: !!demandaDB?.liquidacionSueldo,
-        cotizacionSalud: demandaDB?.cotizacionSalud ?? '',
-        cotizacionAfp: demandaDB?.cotizacionAfp ?? '',
-        cotizacionAfc: demandaDB?.cotizacionAfc ?? '',
-        vacaciones: Number(demandaDB?.vacaciones) || 0,
-        fuero: demandaDB?.fuero ?? '',
-
-        fechaTerminoRelaLaboral: demandaDB?.fechaTerminoRelaLaboral
-          ? new Date(demandaDB.fechaTerminoRelaLaboral).toISOString()
-          : '',
-        motivoTermino: demandaDB?.motivoTermino ?? '',
-        tipoDespido: demandaDB?.tipoDespido ?? '',
-        despidoDisciplinario: demandaDB?.despidoDisciplinario ?? '',
-        otroDespidoDisciplinario: demandaDB?.otroDespidoDisciplinario ?? '',
-        anosServicios: !!demandaDB?.anosServicios,
-        mesAviso: !!demandaDB?.mesAviso,
-        finiquito: !!demandaDB?.finiquito,
-        prestacionesAdeudadas: Array.isArray(demandaDB?.prestacionesAdeudadas)
-          ? demandaDB.prestacionesAdeudadas
-          : [],
-        materias: Array.isArray(demandaDB?.materias) ? demandaDB.materias : [],
-      });
-
-    const demandadosSerializados = safeSerializeDemandados(sourceSolidarios);
+    const demandadosSerializados = safeSerializeDemandados(mergedDemandadoSols);
     debug('demandadosSerializados', {
       count: demandadosSerializados.length,
       overriddenByBody: bodyHasSolidarios,

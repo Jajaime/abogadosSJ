@@ -17,7 +17,6 @@ model Usuario {
   demandas             Demanda[]           @relation("UsuarioDemandas")
   demandaDocumentos    DemandaDocumento[]  @relation("UsuarioDemandaDocumentos")
   sessions             Session[]
-  archivos             Documento[]         @relation("UsuarioArchivos")
 }
 
 model Session {
@@ -89,15 +88,6 @@ model DemandadoSolidario {
   representanteLegal    String
   runRepresentanteLegal String
   demanda               Demanda  @relation(fields: [demandaId], references: [id], onDelete: Cascade)
-}
-
-model Documento {
-  id        String   @id @default(uuid())
-  nombre    String
-  contenido Bytes
-  usuarioId String
-  tamano    Int
-  usuario   Usuario @relation("UsuarioArchivos", fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model DemandaDocumento {
