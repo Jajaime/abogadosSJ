@@ -1,69 +1,71 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
+import { ZodError } from 'zod';
+
+import { demandaPayloadSchema, MAX_DEMANDA_BODY_SIZE, toDemandaPersistence } from '@/types/demanda.schema';
 import { prisma } from '@/lib/prisma';
+import { requireSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
-/* ---------- Helpers de normalización ---------- */
-const strFrom = (v: any): string => {
-  if (v == null) return '';
-  if (typeof v === 'string') return v;
-  if (typeof v === 'object' && typeof v.name === 'string') return v.name;
-  return String(v);
-};
-
-const dateFrom = (v: any): Date | null => {
-  if (!v) return null;
-  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? null : d;
-};
-
-const numOrNull = (v: any): number | null => {
-  if (v === '' || v == null) return null;
-  const n = typeof v === 'number' ? v : parseFloat(v);
-  return Number.isFinite(n) ? n : null;
-};
-
-const boolNormalize = (v: any): boolean => {
-  if (typeof v === 'boolean') return v;
-  if (typeof v === 'number') return v !== 0;
-  if (typeof v === 'string') {
-    const s = v.trim().toLowerCase();
-    return ['si', 'sí', 'true', '1', 'on', 'yes'].includes(s);
+class BadRequest extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'BadRequest';
   }
-  return Boolean(v);
-};
+}
 
-/* ---------- Helpers de validación (requeridos) ---------- */
-class BadRequest extends Error { constructor(msg: string) { super(msg); this.name = 'BadRequest'; } }
+const mapDemandadoSolidario = (item: any) => ({
+  id: item.id,
+  nombreRazonSocial: item.nombreRazonSocial ?? '',
+  rut: item.rut ?? '',
+  domicilio: item.domicilio ?? '',
+  representanteLegal: item.representanteLegal ?? '',
+  runRepresentanteLegal: item.runRepresentanteLegal ?? '',
+});
 
-const reqStr = (v: any, field: string): string => {
-  const s = strFrom(v).trim();
-  if (!s) throw new BadRequest(`El campo '${field}' es obligatorio.`);
-  return s;
-};
+const mapDemanda = (demanda: any) => ({
+  ...demanda,
+  demandadoSols: Array.isArray(demanda.demandadoSolidario)
+    ? demanda.demandadoSolidario.map(mapDemandadoSolidario)
+    : [],
+});
 
-const reqDate = (v: any, field: string): Date => {
-  const d = dateFrom(v);
-  if (!d) throw new BadRequest(`El campo '${field}' debe ser una fecha válida.`);
-  return d;
-};
+const parseDemandaPayload = async (req: Request) => {
+  const rawBody = await req.text();
+  if (rawBody.length > MAX_DEMANDA_BODY_SIZE) {
+    throw new BadRequest('El payload excede el tamaño máximo permitido.');
+  }
 
-const reqBool = (v: any, field: string): boolean => {
-  if (v === undefined || v === null || (typeof v === 'string' && v.trim() === ''))
-    throw new BadRequest(`El campo '${field}' es obligatorio.`);
-  return boolNormalize(v);
+  let json: unknown;
+  try {
+    json = rawBody ? JSON.parse(rawBody) : {};
+  } catch {
+    throw new BadRequest('El cuerpo de la solicitud debe ser JSON válido.');
+  }
+
+  const parsed = demandaPayloadSchema.safeParse(json);
+  if (!parsed.success) {
+    const detail = parsed.error.issues.map((issue) => issue.message).join(', ');
+    throw new BadRequest(detail || 'Payload inválido.');
+  }
+
+  return parsed.data;
 };
 
 /* ---------- GET: lista ---------- */
 export async function GET() {
   try {
+    const session = await requireSession();
     const allDemandas = await prisma.demanda.findMany({
+      where: { usuarioId: session.userId },
       orderBy: { createdAt: 'desc' },
-      include: { demandadoSolidario: true }
+      include: { demandadoSolidario: true },
     });
-    return NextResponse.json(allDemandas, { status: 200 });
+    return NextResponse.json(allDemandas.map(mapDemanda), { status: 200 });
   } catch (error) {
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
     return NextResponse.json({ error: 'Error al obtener las demandas' }, { status: 500 });
   }
 }
@@ -71,84 +73,34 @@ export async function GET() {
 /* ---------- POST: crear ---------- */
 export async function POST(req: Request) {
   try {
-    const data = await req.json();
-
-    // Campos REQUERIDOS según tu schema
-    const payload = {
-      // Cliente
-      nombres: reqStr(data.nombres, 'nombres'),
-      apPaterno: reqStr(data.apPaterno, 'apPaterno'),
-      apMaterno: reqStr(data.apMaterno, 'apMaterno'),
-      run: reqStr(data.run, 'run'),
-      nacionalidad: reqStr(data.nacionalidad, 'nacionalidad'),
-      estadoCivil: reqStr(data.estadoCivil, 'estadoCivil'),
-      fechaNacimiento: reqDate(data.fechaNacimiento, 'fechaNacimiento'),
-      correoElectronico: reqStr(data.correoElectronico, 'correoElectronico'),
-      domicilioParticular: reqStr(data.domicilioParticular, 'domicilioParticular'),
-
-      // Demandado principal
-      nombreRazonSocial: reqStr(data.nombreRazonSocial, 'nombreRazonSocial'),
-      rutRazonSocial: reqStr(data.rutRazonSocial, 'rutRazonSocial'),
-      domicilioRazonSocial: reqStr(data.domicilioRazonSocial, 'domicilioRazonSocial'),
-
-      // Relación laboral
-      fechaInicioRelacionLaboral: dateFrom(data.fechaInicioRelacionLaboral) ?? undefined, // opcional en schema
-      naturalezaContrato: reqStr(data.naturalezaContrato, 'naturalezaContrato'),
-      funciones: reqStr(data.funciones, 'funciones'),
-      lugar: reqStr(data.lugar, 'lugar'),
-      jornada: reqStr(data.jornada, 'jornada'),
-      otraJornada: data.otraJornada ? strFrom(data.otraJornada) : undefined,
-      registroAsistencia: reqBool(data.registroAsistencia, 'registroAsistencia'),
-      remuneracion: numOrNull(data.remuneracion) ?? undefined, // opcional en schema
-      formaPago: reqStr(data.formaPago, 'formaPago'),
-      liquidacionSueldo: reqBool(data.liquidacionSueldo, 'liquidacionSueldo'),
-      cotizacionSalud: reqStr(data.cotizacionSalud, 'cotizacionSalud'),
-      cotizacionAfp: reqStr(data.cotizacionAfp, 'cotizacionAfp'),
-      cotizacionAfc: reqStr(data.cotizacionAfc, 'cotizacionAfc'),
-      vacaciones: numOrNull(data.vacaciones) ?? undefined, // opcional en schema
-      fuero: reqStr(data.fuero, 'fuero'),
-
-      // Término relación
-      fechaTerminoRelaLaboral: dateFrom(data.fechaTerminoRelaLaboral) ?? undefined, // opcional en schema
-      motivoTermino: reqStr(data.motivoTermino, 'motivoTermino'),
-      tipoDespido: reqStr(data.tipoDespido, 'tipoDespido'),
-      despidoDisciplinario: reqStr(data.despidoDisciplinario, 'despidoDisciplinario'),
-      otroDespidoDisciplinario: data.otroDespidoDisciplinario ? strFrom(data.otroDespidoDisciplinario) : undefined,
-      anosServicios: reqBool(data.anosServicios, 'anosServicios'),
-      mesAviso: reqBool(data.mesAviso, 'mesAviso'),
-      finiquito: reqBool(data.finiquito, 'finiquito'),
-
-      // Array requerido => si no viene, lo dejamos vacío
-      prestacionesAdeudadas: Array.isArray(data.prestacionesAdeudadas)
-        ? data.prestacionesAdeudadas.map(strFrom)
-        : [],
-      materias: Array.isArray(data.materias)
-        ? data.materias.map(strFrom)
-        : [],
-
-      // Relación hijos
-      demandadoSolidario: {
-        create: (Array.isArray(data.demandadoSols) ? data.demandadoSols : []).map((d: any) => ({
-          nombreRazonSocial: reqStr(d?.nombre, 'demandadoSols.nombre'),
-          rut: reqStr(d?.rut, 'demandadoSols.rut'),
-          domicilio: reqStr(d?.domicilio, 'demandadoSols.domicilio'),
-          representanteLegal: reqStr(d?.representanteLegal, 'demandadoSols.representanteLegal'),
-          runRepresentanteLegal: reqStr(d?.runRepresentanteLegal, 'demandadoSols.runRepresentanteLegal')
-        }))
-      }
-    } as const;
+    const session = await requireSession();
+    const body = await parseDemandaPayload(req);
+    const { data, demandadoSols } = toDemandaPersistence(body);
 
     const nuevaDemanda = await prisma.demanda.create({
-      data: payload as any,
-      include: { demandadoSolidario: true }
+      data: {
+        ...data,
+        usuarioId: session.userId,
+        demandadoSolidario: demandadoSols.length
+          ? {
+              create: demandadoSols,
+            }
+          : undefined,
+      },
+      include: { demandadoSolidario: true },
     });
 
-    return NextResponse.json(nuevaDemanda, { status: 201 });
+    return NextResponse.json(mapDemanda(nuevaDemanda), { status: 201 });
   } catch (error: any) {
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
     if (error instanceof BadRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    // errores comunes de Prisma (únicos, etc.)
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
+    }
     if (error?.code === 'P2002') {
       return NextResponse.json({ error: 'RUN o correo ya existen (violación de unicidad).' }, { status: 409 });
     }

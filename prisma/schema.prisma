@@ -8,10 +8,14 @@ datasource db {
 }
 
 model Usuario {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
+  id                   String              @id @default(uuid())
+  email                String              @unique
+  name                 String?
+  passwordHash         String?
+  createdAt            DateTime            @default(now())
+  demandas             Demanda[]           @relation("UsuarioDemandas")
+  demandaDocumentos    DemandaDocumento[]  @relation("UsuarioDemandaDocumentos")
+  archivos             Documento[]         @relation("UsuarioArchivos")
 }
 
 model Demanda {
@@ -19,11 +23,11 @@ model Demanda {
   nombres                    String
   apPaterno                  String
   apMaterno                  String
-  run                        String               
+  run                        String
   nacionalidad               String
   estadoCivil                String
   fechaNacimiento            DateTime
-  correoElectronico          String               
+  correoElectronico          String
   domicilioParticular        String
   nombreRazonSocial          String
   rutRazonSocial             String
@@ -54,33 +58,43 @@ model Demanda {
   prestacionesAdeudadas      String[]             @default([])
   createdAt                  DateTime             @default(now())
   updatedAt                  DateTime             @updatedAt
+  usuarioId                  String?
+  usuario                    Usuario?            @relation("UsuarioDemandas", fields: [usuarioId], references: [id], onDelete: SetNull)
   demandadoSolidario         DemandadoSolidario[]
+  documentos                 DemandaDocumento[]
   materias                   String[]             @default([])
 }
 
 model DemandadoSolidario {
-  id                    Int     @id @default(autoincrement())
+  id                    Int      @id @default(autoincrement())
   nombreRazonSocial     String
-  rut                   String  
+  rut                   String
   domicilio             String
   demandaId             Int
   representanteLegal    String
   runRepresentanteLegal String
-  demanda               Demanda @relation(fields: [demandaId], references: [id], onDelete: Cascade)
+  demanda               Demanda  @relation(fields: [demandaId], references: [id], onDelete: Cascade)
 }
 
 model Documento {
-  id        String @id @default(uuid())
+  id        String   @id @default(uuid())
   nombre    String
   contenido Bytes
   usuarioId String
   tamano    Int
+  usuario   Usuario @relation("UsuarioArchivos", fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model DemandaDocumento {
-  id        String @id @default(uuid())
-  nombre    String
-  contenido Bytes
-  demandaId Int
-  tamano    Int
+  id         String   @id @default(uuid())
+  nombre     String
+  contenido  Bytes
+  demandaId  Int
+  usuarioId  String
+  tamano     Int
+  demanda    Demanda @relation(fields: [demandaId], references: [id], onDelete: Cascade)
+  usuario    Usuario @relation("UsuarioDemandaDocumentos", fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([demandaId, usuarioId])
 }
+

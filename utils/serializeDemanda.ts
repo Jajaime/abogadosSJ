@@ -1,22 +1,22 @@
-// utils/serializeDemanda.ts
+﻿// utils/serializeDemanda.ts
 
 /**
  * Serializadores y formateadores para DemandaDTO y DemandadoSolDTO
  * - Normaliza fechas a ISO y agrega formatos dd-mm-yyyy
  * - Aplana opciones {name, code} -> string (toma .name)
- * - Convierte booleanos a "Sí/No"
- * - Formatea remuneración con separadores para es-CL
- * - Deja arrays como CSV y también listos para loops en docx-templates
+ * - Convierte booleanos a "SÃ­/No"
+ * - Formatea remuneraciÃ³n con separadores para es-CL
+ * - Deja arrays como CSV y tambiÃ©n listos para loops en docx-templates
  */
 
 import type { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
 
-// ------------------ Helpers de normalización ------------------
+// ------------------ Helpers de normalizaciÃ³n ------------------
 
 const toISO = (v: unknown) => {
   if (!v) return '';
   if (v instanceof Date) return v.toISOString();
-  // Si viene como string pero es fecha válida, conserva como ISO
+  // Si viene como string pero es fecha vÃ¡lida, conserva como ISO
   const d = new Date(v as string);
   return isNaN(d.getTime()) ? String(v) : d.toISOString();
 };
@@ -39,30 +39,44 @@ const readMaybeOption = (v: unknown) => {
   return (v as string) ?? '';
 };
 
-// textos Sí/No para booleanos, útil en doc
-const yesNo = (b: unknown) => (b ? 'Sí' : 'No');
+// textos SÃ­/No para booleanos, Ãºtil en doc
+const yesNo = (b: unknown) => (b ? 'SÃ­' : 'No');
 
 // formato de miles para CLP/num
 const formatMoney = (n: unknown) => {
   const value = typeof n === 'number' ? n : Number(n);
   if (isNaN(value)) return '';
-  return value.toLocaleString('es-CL'); // “1.234.567”
+  return value.toLocaleString('es-CL'); // â€œ1.234.567â€
 };
 
-// unión por coma simple (y espacio)
+// uniÃ³n por coma simple (y espacio)
 const joinCSV = (arr?: string[]) =>
   Array.isArray(arr) ? arr.filter(Boolean).join(', ') : '';
 
 // normaliza demandados para plantilla/loops
 export function safeSerializeDemandados(list: DemandadoSolDTO[] = []) {
-  return list.map((x) => ({
-    id: x.id ?? '',
-    nombreRazonSocial: x.nombreRazonSocial ?? '',
-    rut: x.rut ?? '',
-    domicilio: x.domicilio ?? '',
-    representanteLegal: x.representanteLegal ?? '',
-    runRepresentanteLegal: x.runRepresentanteLegal ?? '',
-  }));
+  const toStringOrEmpty = (value: unknown) => {
+    if (value === null || value === undefined) return '';
+    return String(value).trim();
+  };
+
+  return list.map((x) => {
+    const record = x as Record<string, unknown>;
+
+    const nombre =
+      typeof x.nombreRazonSocial === 'string' && x.nombreRazonSocial.trim()
+        ? x.nombreRazonSocial
+        : toStringOrEmpty(record.nombre);
+
+    return {
+      id: toStringOrEmpty(record.id ?? x.id),
+      nombreRazonSocial: nombre,
+      rut: toStringOrEmpty(x.rut ?? record.rut),
+      domicilio: toStringOrEmpty(x.domicilio ?? record.domicilio),
+      representanteLegal: toStringOrEmpty(x.representanteLegal ?? record.representanteLegal),
+      runRepresentanteLegal: toStringOrEmpty(x.runRepresentanteLegal ?? record.runRepresentanteLegal),
+    };
+  });
 }
 
 // ------------------ SERIALIZADOR PRINCIPAL ------------------
@@ -125,7 +139,7 @@ export function safeSerializeDemanda(d: DemandaDTO) {
     prestacionesAdeudadas: Array.isArray(d.prestacionesAdeudadas) ? d.prestacionesAdeudadas : [],
     materias: Array.isArray(d.materias) ? d.materias : [],
 
-    // --- Derivados FÁCILES para usar en DOCX ---
+    // --- Derivados FÃCILES para usar en DOCX ---
     // Fechas legibles
     fechaNacimientoFmt: formatDDMMYYYY(fnacISO),
     fechaInicioRelacionLaboralFmt: formatDDMMYYYY(finicioISO),
@@ -138,14 +152,14 @@ export function safeSerializeDemanda(d: DemandaDTO) {
     mesAvisoTxt: yesNo(d.mesAviso),
     finiquitoTxt: yesNo(d.finiquito),
 
-    // Remuneración con miles
+    // RemuneraciÃ³n con miles
     remuneracionCLP: formatMoney(d.remuneracion),
 
-    // Arrays como CSV (útil si en el doc pones una sola línea)
+    // Arrays como CSV (Ãºtil si en el doc pones una sola lÃ­nea)
     prestacionesAdeudadasCSV: joinCSV(d.prestacionesAdeudadas),
     materiasCSV: joinCSV(d.materias),
 
-    // NOTA: también quedan listas “loopables” sin tocar para docx-templates:
+    // NOTA: tambiÃ©n quedan listas â€œloopablesâ€ sin tocar para docx-templates:
     // {#demandadoSols}{nombre} - {rut} - {domicilio}{/demandadoSols}
     // {#prestacionesAdeudadas}{.}{/prestacionesAdeudadas}
     // {#materias}{.}{/materias}

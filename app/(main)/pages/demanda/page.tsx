@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
 
@@ -22,6 +22,7 @@ export default function DemandasPage() {
   const [demandas, setDemandas] = useState<DemandaDTO[]>([]);
   const [selectedDemandas, setSelectedDemandas] = useState<DemandaDTO[] | null>(null);
   const [globalFilter, setGlobalFilter] = useState('');
+  const deferredGlobalFilter = useDeferredValue(globalFilter);
   const [loading, setLoading] = useState(true);
   const dt = useRef<DataTable<any>>(null);
 
@@ -35,10 +36,15 @@ export default function DemandasPage() {
   const [generatingDoc, setGeneratingDoc] = useState<string | null>(null);
 
   // ====== Fetch ======
-  const fetchDemandas = async () => {
+  const fetchDemandas = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch('/api/demandas', { cache: 'no-store' });
+      if (res.status === 401) {
+        setDemandas([]);
+        router.push('/auth/login');
+        return;
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: DemandaDTO[] = await res.json();
       setDemandas(data ?? []);
@@ -47,7 +53,7 @@ export default function DemandasPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
     const raw = sessionStorage.getItem('flashToast');
@@ -57,7 +63,7 @@ export default function DemandasPage() {
     sessionStorage.removeItem('flashToast');
   }
     fetchDemandas();
-  }, []);
+  }, [fetchDemandas]);
 
   // ====== Helpers ======
   const formatFecha = (row: DemandaDTO) => {
@@ -96,8 +102,13 @@ export default function DemandasPage() {
       }),
     });
 
+    if (response.status === 401) {
+      router.push('/auth/login');
+      return;
+    }
+
     const result = await response.json();
-    if (!result?.success) throw new Error(result?.error || 'Error al generar documento');
+    if (!response.ok || !result?.success) throw new Error(result?.error || 'Error al generar documento');
 
     toast.current?.show({ severity: 'success', summary: 'Éxito', detail: 'Documento generado y guardado', life: 3000 });
   } catch (e: any) {
@@ -110,14 +121,22 @@ export default function DemandasPage() {
   const handleDescargarDocumento = async (d: DemandaDTO) => {
     try {
       const response = await fetch(`/api/download_doc?demandaId=${d.id}`);
+      if (response.status === 401) {
+        router.push('/auth/login');
+        return;
+      }
       if (!response.ok) throw new Error('Error al descargar el documento');
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
+      link.rel = 'noopener';
+      link.setAttribute('aria-hidden', 'true');
       link.download = `documento_${d.run || d.id}.docx`;
+      document.body.appendChild(link);
       link.click();
-      link.remove();
+      document.body.removeChild(link);
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
       toast.current?.show({ severity: 'success', summary: 'Éxito', detail: 'Documento descargado', life: 3000 });
     } catch (e: any) {
       toast.current?.show({ severity: 'error', summary: 'Error', detail: e?.message || 'No se pudo descargar', life: 5000 });
@@ -197,7 +216,7 @@ export default function DemandasPage() {
       <h5 className="m-0">DEMANDAS</h5>
       <span className="block mt-2 md:mt-0 p-input-icon-left">
         <i className="pi pi-search" />
-        <InputText type="search" onInput={(e) => setGlobalFilter(e.currentTarget.value)} placeholder="Buscar..." />
+        <InputText type="search" onInput={(e) => setGlobalFilter(e.currentTarget.value)} placeholder="Buscar..." aria-label="Buscar demanda" />
       </span>
     </div>
   );
@@ -277,7 +296,7 @@ export default function DemandasPage() {
             className="datatable-responsive"
             paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
             currentPageReportTemplate="Mostrando {first} al {last} de {totalRecords} demandas"
-            globalFilter={globalFilter}
+        globalFilter={deferredGlobalFilter}
             emptyMessage="No se encontraron demandas."
             header={header}
             responsiveLayout="scroll"

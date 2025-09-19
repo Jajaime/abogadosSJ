@@ -1,9 +1,26 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+﻿import { PrismaClient, Prisma } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Iniciando seed...');
+
+  const email = process.env.SEED_USER_EMAIL ?? 'demo@example.com';
+  const rawPassword = process.env.SEED_USER_PASSWORD ?? 'Demo1234!';
+  const passwordHash = await bcrypt.hash(rawPassword, 12);
+
+  const demoUser = await prisma.usuario.upsert({
+    where: { email },
+    update: { passwordHash, name: 'Demo User' },
+    create: {
+      email,
+      name: 'Demo User',
+      passwordHash,
+    },
+  });
+
+  console.log(`👤 Usuario seed: ${demoUser.email}`);
 
   // Demanda 1: sin demandados solidarios
   await prisma.demanda.create({
@@ -26,7 +43,7 @@ async function main() {
       lugar: 'Santiago',
       jornada: 'Completa',
       registroAsistencia: true,
-      remuneracion: new Prisma.Decimal(1200000.00),   // 👈 uso de Decimal
+      remuneracion: new Prisma.Decimal(1200000.0),
       formaPago: 'Transferencia',
       liquidacionSueldo: true,
       cotizacionSalud: 'Fonasa',
@@ -39,8 +56,9 @@ async function main() {
       mesAviso: true,
       finiquito: false,
       prestacionesAdeudadas: ['Gratificación', 'Vacaciones proporcionales'],
-      materias: ['Laboral']
-    }
+      materias: ['Laboral'],
+      usuarioId: demoUser.id,
+    },
   });
 
   // Demanda 2: con demandados solidarios
@@ -65,7 +83,7 @@ async function main() {
       jornada: 'Parcial',
       otraJornada: 'Lunes a Viernes 09:00-13:00',
       registroAsistencia: false,
-      remuneracion: new Prisma.Decimal(650000.50),   // 👈 uso de Decimal
+      remuneracion: new Prisma.Decimal(650000.5),
       formaPago: 'Depósito',
       liquidacionSueldo: true,
       cotizacionSalud: 'Isapre',
@@ -81,7 +99,7 @@ async function main() {
       finiquito: true,
       prestacionesAdeudadas: ['Indemnización por años de servicio'],
       materias: ['Laboral', 'Indemnizaciones'],
-
+      usuarioId: demoUser.id,
       demandadoSolidario: {
         create: [
           {
@@ -89,18 +107,18 @@ async function main() {
             rut: '78.111.222-3',
             domicilio: 'Av. Angamos 200, Antofagasta',
             representanteLegal: 'Carlos Sánchez',
-            runRepresentanteLegal: '9.876.543-2'
+            runRepresentanteLegal: '9.876.543-2',
           },
           {
             nombreRazonSocial: 'Holding Servicios SPA',
             rut: '79.333.444-5',
             domicilio: 'Av. Costanera 300, Antofagasta',
             representanteLegal: 'Ana Torres',
-            runRepresentanteLegal: '1.234.567-8'
-          }
-        ]
-      }
-    }
+            runRepresentanteLegal: '1.234.567-8',
+          },
+        ],
+      },
+    },
   });
 
   console.log('✅ Seed completado.');

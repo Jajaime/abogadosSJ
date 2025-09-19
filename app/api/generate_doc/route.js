@@ -1,46 +1,130 @@
-// app/api/generate_doc/route.js
+﻿// app/api/generate_doc/route.js
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import path from 'path';
 import fs from 'fs/promises';
 import { createReport } from 'docx-templates';
+import { z } from 'zod';
 
 // OJO: si usas alias "@/..." en JS, asegúrate de tener jsconfig.json/tsconfig.json con "paths".
 // Si no lo tienes, cambia estos imports a rutas relativas.
 import { safeSerializeDemanda, safeSerializeDemandados } from '@/utils/serializeDemanda';
 import { decorateDemandaForDocx, decorateDemandadoSolidarioForDocx } from '@/utils/decorateDemanda';
 import { formatFechaLargaDate } from '@/utils/formatters';
+import { prisma } from '@/lib/prisma';
+import { requireSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
-const prisma = new PrismaClient();
+const MAX_DOCUMENT_SIZE = 2 * 1024 * 1024; // 2MB
+const SAFE_FILENAME_REGEX = /^[^<>:"/\\|?*\r\n]+$/;
 
-function formatFecha(str) {
-  if (!str) return '';
-  try {
-    const d = new Date(str);
-    if (isNaN(d.getTime())) return '';
-    const dd = String(d.getDate()).padStart(2, '0');
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const yyyy = d.getFullYear();
-    return `${dd}-${mm}-${yyyy}`;
-  } catch {
-    return '';
+const debug = (...args) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('[generate_doc]', ...args);
   }
-}
+};
+
+const demandadoSolidarioSchema = z
+  .object({
+    id: z.string().trim().optional(),
+    nombreRazonSocial: z.string().trim().max(255).optional(),
+    rut: z.string().trim().max(30).optional(),
+    domicilio: z.string().trim().max(255).optional(),
+    representanteLegal: z.string().trim().max(255).optional(),
+    runRepresentanteLegal: z.string().trim().max(30).optional(),
+  })
+  .strip();
+
+const demandaSchema = z
+  .object({
+    id: z.string().optional(),
+    nombres: z.string().trim().optional(),
+    apPaterno: z.string().trim().optional(),
+    apMaterno: z.string().trim().optional(),
+    run: z.string().trim().optional(),
+    fechaNacimiento: z.union([z.string(), z.date()]).optional(),
+    nacionalidad: z.union([z.string(), z.object({ name: z.string(), code: z.string().optional() })]).optional(),
+    correoElectronico: z.string().trim().max(320).optional(),
+    estadoCivil: z.union([z.string(), z.object({ name: z.string(), code: z.string().optional() })]).optional(),
+    domicilioParticular: z.string().trim().optional(),
+    demandadoSols: z.array(demandadoSolidarioSchema).optional(),
+    nombreRazonSocial: z.string().trim().optional(),
+    rutRazonSocial: z.string().trim().optional(),
+    domicilioRazonSocial: z.string().trim().optional(),
+    representanteLegal: z.string().trim().optional(),
+    runRepresentanteLegal: z.string().trim().optional(),
+    fechaInicioRelacionLaboral: z.union([z.string(), z.date()]).optional(),
+    naturalezaContrato: z.string().trim().optional(),
+    funciones: z.string().trim().optional(),
+    lugar: z.string().trim().optional(),
+    jornada: z.string().trim().optional(),
+    otraJornada: z.string().trim().optional(),
+    registroAsistencia: z.boolean().optional(),
+    remuneracion: z.union([z.number(), z.string()]).optional(),
+    formaPago: z.string().trim().optional(),
+    liquidacionSueldo: z.boolean().optional(),
+    cotizacionSalud: z.string().trim().optional(),
+    cotizacionAfp: z.string().trim().optional(),
+    cotizacionAfc: z.string().trim().optional(),
+    vacaciones: z.union([z.number(), z.string()]).optional(),
+    fuero: z.string().trim().optional(),
+    fechaTerminoRelaLaboral: z.union([z.string(), z.date()]).optional(),
+    motivoTermino: z.string().trim().optional(),
+    tipoDespido: z.string().trim().optional(),
+    despidoDisciplinario: z.string().trim().optional(),
+    otroDespidoDisciplinario: z.string().trim().optional(),
+    anosServicios: z.boolean().optional(),
+    mesAviso: z.boolean().optional(),
+    finiquito: z.boolean().optional(),
+    prestacionesAdeudadas: z.array(z.string().trim()).optional(),
+    materias: z.array(z.string().trim()).optional(),
+  })
+  .passthrough();
+
+const requestSchema = z.object({
+  demandaId: z.preprocess((value) => {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed || !/^\d+$/.test(trimmed)) return Number.NaN;
+      return Number.parseInt(trimmed, 10);
+    }
+    return value;
+  }, z.number().int().positive()),
+  nombreArchivo: z
+    .string()
+    .trim()
+    .min(1, 'nombreArchivo requerido')
+    .max(255)
+    .regex(SAFE_FILENAME_REGEX, 'nombreArchivo contiene caracteres no permitidos'),
+  demandadoSolidarios: z.array(demandadoSolidarioSchema).optional(),
+  demanda: demandaSchema.optional(),
+});
 
 export async function POST(request) {
   try {
+    const session = await requireSession();
     const raw = await request.json();
-    const demandaId = raw?.demandaId;
-    const nombreArchivo = raw?.nombreArchivo;
+    const parsed = requestSchema.safeParse(raw);
 
-    if (!demandaId || !nombreArchivo) {
+    if (!parsed.success) {
+      const detail = parsed.error.issues.map((issue) => issue.message).join(', ');
+      console.debug(parsed.error.issues);
       return NextResponse.json(
-        { success: false, error: 'Campos requeridos faltantes (demandaId, nombreArchivo)' },
+        {
+          success: false,
+          error: 'Body inválido',
+          detail,
+        },
         { status: 400 }
       );
     }
+
+    const {
+      demandaId,
+      nombreArchivo,
+      demandadoSolidarios: bodyDemandados,
+      demanda,
+    } = parsed.data;
 
     // 1) Buscar en DB (fuente de verdad / fallback)
     const demandaDB = await prisma.demanda.findUnique({
@@ -51,33 +135,6 @@ export async function POST(request) {
       },
     });
 
-    // 2) Normaliza la fuente desde DB (si mañana cambias el nombre de la relación, solo tocas aquí)
-    const demandadoSolidariosDB = Array.isArray(demandaDB?.demandadoSolidario)
-      ? demandaDB.demandadoSolidario
-      : [];
-
-    // 3) SOLO usa lo del body si es un array con elementos; si viene vacío o inexistente, usa DB
-    const bodyHasSolidarios = Array.isArray(raw?.demandadoSolidarios) && raw.demandadoSolidarios.length > 0;
-    const sourceSolidarios = bodyHasSolidarios ? raw.demandadoSolidarios : demandadoSolidariosDB;
-
-
-    // DEBUG para ver qué nombre trae datos realmente
-    console.log('DBG keys:', Object.keys(demandaDB || {}));
-    console.log('DBG lengths:', {
-      demandadoSolidario: Array.isArray(demandaDB?.demandadoSolidario) ? demandaDB.demandadoSolidario.length : null,
-      demandadoSols: Array.isArray(demandaDB?.demandadoSols) ? demandaDB.demandadoSols.length : null,
-      demandadoSolidarios: Array.isArray(demandaDB?.demandadoSolidarios) ? demandaDB.demandadoSolidarios.length : null,
-    });
-
-    // Toma la lista que exista (solo una será array)
-    const solidariosDB =
-      Array.isArray(demandaDB?.demandadoSolidario) ? demandaDB.demandadoSolidario :
-        Array.isArray(demandaDB?.demandadoSols) ? demandaDB.demandadoSols :
-          Array.isArray(demandaDB?.demandadoSolidarios) ? demandaDB.demandadoSolidarios :
-            [];
-
-    console.log('DBG solidariosDB length:', solidariosDB.length);
-
     if (!demandaDB) {
       return NextResponse.json(
         { success: false, error: 'Demanda no encontrada' },
@@ -85,9 +142,24 @@ export async function POST(request) {
       );
     }
 
+    // 2) Normaliza la fuente desde DB (si mañana cambias el nombre de la relación, solo tocas aquí)
+    const demandadoSolidariosDB = Array.isArray(demandaDB.demandadoSolidario)
+      ? demandaDB.demandadoSolidario
+      : [];
+
+    // 3) SOLO usa lo del body si es un array con elementos; si viene vacío o inexistente, usa DB
+    const bodySolidarios = Array.isArray(bodyDemandados) ? bodyDemandados : [];
+    const bodyHasSolidarios = bodySolidarios.length > 0;
+    const sourceSolidarios = bodyHasSolidarios ? bodySolidarios : demandadoSolidariosDB;
+
     // 2) Tomar del BODY (si viene) o mapear desde DB y serializar SIEMPRE
-    const demandaSerializada = raw?.demanda
-      ? safeSerializeDemanda(raw.demanda)
+    const demandaOverride = demanda ? { ...demanda } : undefined;
+    if (demandaOverride && !Array.isArray(demandaOverride.demandadoSols)) {
+      demandaOverride.demandadoSols = sourceSolidarios;
+    }
+
+    const demandaSerializada = demandaOverride
+      ? safeSerializeDemanda(demandaOverride)
       : safeSerializeDemanda({
         // mapeo mínimo desde DB -> DTO para que el serializador trabaje
         // (ajusta nombres si difieren de tu schema)
@@ -152,23 +224,12 @@ export async function POST(request) {
         materias: Array.isArray(demandaDB?.materias) ? demandaDB.materias : [],
       });
 
-    const demandadosSerializados = safeSerializeDemandados(
-  sourceSolidarios.map((x) => ({
-    id: x.id,
-    nombreRazonSocial: x.nombreRazonSocial ?? '',
-    rut: x.rut ?? '',
-    domicilio: x.domicilio ?? '',
-    representanteLegal: x.representanteLegal ?? '',
-    runRepresentanteLegal: x.runRepresentanteLegal ?? '',
-  }))
-);
-    console.log('DBG demandadosSerializados length2:', demandaDB.demandadoSolidario.length);
-    console.log('DBG demandadosSerializados length:', demandadosSerializados.length);
-    // (opcional) logs de verificación
-console.log('DBG solidariosDB length:', solidariosDB.length);
-console.log('DBG bodyHasSolidarios:', bodyHasSolidarios, ' (si true, pisó DB)');
-console.log('DBG demandadosSerializados length:', demandadosSerializados.length);
-    // >>> AQUÍ VA TU BLOQUE NUEVO <<<
+    const demandadosSerializados = safeSerializeDemandados(sourceSolidarios);
+    debug('demandadosSerializados', {
+      count: demandadosSerializados.length,
+      overriddenByBody: bodyHasSolidarios,
+    });
+
     // 3) Data formateada para la plantilla (nombres en mayúsculas, fechas largas, RUT, CLP, etc.)
     const demandaFmt = decorateDemandaForDocx(demandaSerializada);
     const demandadoSolidariosFmt = (Array.isArray(demandadosSerializados) ? demandadosSerializados : [])
@@ -198,24 +259,40 @@ console.log('DBG demandadosSerializados length:', demandadosSerializados.length)
       data: templateData,
     });
 
-    const MAX_SIZE = 2 * 1024 * 1024; // 2MB
-    if (buffer.byteLength > MAX_SIZE) {
+    if (buffer.byteLength > MAX_DOCUMENT_SIZE) {
       return NextResponse.json(
         { success: false, error: 'El documento excede el tamaño máximo permitido' },
         { status: 413 }
       );
     }
 
-    // 6) Guardar documento
-    const documento = await prisma.demandaDocumento.create({
-      data: {
-        nombre: nombreArchivo,
-        contenido: buffer,
-        demandaId: demandaDB.id, // id Int
-        tamano: buffer.byteLength, // usa "tamano" en el schema (sin ñ)
-        // Si tu modelo tiene JSON:
-        // metadata: { demandaUsada: demandaSerializada, demandadosUsados: demandadosSerializados },
-      },
+    // 6) Guardar documento (único por demanda/usuario)
+    const documento = await prisma.$transaction(async (tx) => {
+      const existente = await tx.demandaDocumento.findFirst({
+        where: { demandaId: demandaDB.id, usuarioId: session.userId },
+        select: { id: true },
+      });
+
+      if (existente) {
+        return tx.demandaDocumento.update({
+          where: { id: existente.id },
+          data: {
+            nombre: nombreArchivo,
+            contenido: buffer,
+            tamano: buffer.byteLength,
+          },
+        });
+      }
+
+      return tx.demandaDocumento.create({
+        data: {
+          nombre: nombreArchivo,
+          contenido: buffer,
+          demandaId: demandaDB.id,
+          usuarioId: session.userId,
+          tamano: buffer.byteLength,
+        },
+      });
     });
 
     return NextResponse.json({
@@ -224,7 +301,10 @@ console.log('DBG demandadosSerializados length:', demandadosSerializados.length)
       mensaje: 'Documento generado y guardado correctamente',
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+      return NextResponse.json({ success: false, error: 'No autenticado' }, { status: 401 });
+    }
     console.error('[DOCX_ERROR]', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 });
   }
 }

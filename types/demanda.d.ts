@@ -1,7 +1,8 @@
 // Demandado solidario
 export interface DemandadoSolDTO {
     id?: string;
-    nombreRazonSocial: string;
+    nombreRazonSocial?: string;
+    nombre?: string;
     rut: string;
     domicilio: string;
     representanteLegal: string;
@@ -13,6 +14,7 @@ export interface DemandadoSolDTO {
 export interface DemandaDTO {
     // Datos del cliente demandante
     id: string;
+    usuarioId?: string;
     nombres: string;
     apPaterno: string;
     apMaterno: string;
