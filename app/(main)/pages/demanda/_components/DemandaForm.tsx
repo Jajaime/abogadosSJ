@@ -17,8 +17,13 @@ import { Column } from 'primereact/column';
 import { RadioButton } from 'primereact/radiobutton';
 import { InputNumber } from 'primereact/inputnumber';
 import { MultiSelect } from 'primereact/multiselect';
+// imports nuevos
+import { useRut } from '@/hooks/useRut';
+
 
 import type { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
+
+
 
 type DropdownItem = { name: string; code: string };
 
@@ -34,6 +39,11 @@ const DemandaForm: React.FC = () => {
     const params = useParams() as { id?: string };
     const demandaId = params?.id;
     const isEdit = Boolean(demandaId);
+
+    const rutCliente = useRut();                   // para formData.run
+    const rutDemSol = useRut();                    // para demandadoSol.rut
+    const rutRepLegal = useRut();                  // para demandadoSol.runRepresentanteLegal
+    const rutEmpresa = useRut();         // 👈 empresa principal
 
     const toast = useRef<Toast>(null);
     const message = useRef<Messages>(null);
@@ -265,6 +275,9 @@ const DemandaForm: React.FC = () => {
                     return found ?? { name: n, code: n }; // fallback por si no está en catálogo
                 }));
 
+                // Inicializa el hook del RUT cliente con lo traído
+                rutCliente.setValue(data.run || '');
+                rutEmpresa.setValue(data.rutRazonSocial || ''); 
                 setFormData({
                     ...data,
                     fechaNacimiento: data.fechaNacimiento || '',
@@ -281,6 +294,24 @@ const DemandaForm: React.FC = () => {
         fetchDemanda();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isEdit, demandaId]);
+
+    // 3) Mantén formData.run en sync con el hook del cliente
+    useEffect(() => {
+        setFormData(prev => ({ ...prev, run: rutCliente.value }));
+    }, [rutCliente.value]);
+
+    useEffect(() => {
+        setFormData(prev => ({ ...prev, rutRazonSocial: rutEmpresa.value }));
+    }, [rutEmpresa.value]);
+
+    // 4) Al abrir/cargar el diálogo de demandado solidario, sincroniza hooks de RUT
+    useEffect(() => {
+        if (demandadoSolDialog) {
+            rutDemSol.setValue(demandadoSol.rut || '');
+            rutRepLegal.setValue(demandadoSol.runRepresentanteLegal || '');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [demandadoSolDialog]);
 
     // ===================== Handlers =====================
     const handleChange = (e: React.ChangeEvent<HTMLInputElement> | { target: { name: string; value: any } }) => {
@@ -319,7 +350,7 @@ const DemandaForm: React.FC = () => {
         e.preventDefault();
         setSubmitted(true);
 
-        if (!formData.nombres || 
+        if (!formData.nombres ||
             !formData.apPaterno ||
             !formData.apMaterno ||
             !formData.run ||
@@ -367,6 +398,8 @@ const DemandaForm: React.FC = () => {
 
         const payload: DemandaDTO = {
             ...formData,
+            run: rutCliente.value,
+            rutRazonSocial: rutEmpresa.value,
             // fechas a ISO si hay valor Date
             fechaNacimiento:
                 formData.fechaNacimiento instanceof Date
@@ -478,9 +511,15 @@ const DemandaForm: React.FC = () => {
     const saveDemandadoSol = () => {
         setSubmitted(true);
 
-        if (demandadoSol.nombre?.trim() && demandadoSol.rut?.trim() && demandadoSol.domicilio?.trim()) {
+        // usa los valores del hook al momento de guardar
+        const obj = {
+            ...demandadoSol,
+            rut: rutDemSol.value || '',
+            runRepresentanteLegal: rutRepLegal.value || '',
+        };
+
+        if (obj.nombre?.trim() && obj.rut?.trim() && obj.domicilio?.trim()) {
             const list = [...demandadoSols];
-            const obj = { ...demandadoSol };
 
             if (!obj.id) {
                 obj.id = crypto.randomUUID();
@@ -499,6 +538,7 @@ const DemandaForm: React.FC = () => {
             setDemandadoSol(emptyDemandadoSol);
         }
     };
+
 
     const nombreBodyTemplate = (row: DemandadoSolDTO) => <>{row.nombre}</>;
     const rutBodyTemplate = (row: DemandadoSolDTO) => <>{row.rut}</>;
@@ -561,21 +601,21 @@ const DemandaForm: React.FC = () => {
                                     className={classNames({ 'p-invalid': submitted && !formData.nombres })}
                                     required
                                     placeholder="Ingrese los nombres" />
-                                    {submitted && !formData.nombres && <small className="p-invalid">Nombres es requerido.</small>}
+                                {submitted && !formData.nombres && <small className="p-invalid">Nombres es requerido.</small>}
                             </div>
 
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="apPaterno">Apellido Paterno</label>
-                                <InputText 
-                                    id="apPaterno" 
-                                    value={formData.apPaterno} 
-                                    onChange={(e) => handleChange({ target: { name: 'apPaterno', value: e.target.value } })} 
+                                <InputText
+                                    id="apPaterno"
+                                    value={formData.apPaterno}
+                                    onChange={(e) => handleChange({ target: { name: 'apPaterno', value: e.target.value } })}
                                     placeholder="Ingrese apellido paterno" />
                             </div>
 
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="apMaterno">Apellido Materno</label>
-                                <InputText 
+                                <InputText
                                     id="apMaterno"
                                     value={formData.apMaterno}
                                     onChange={(e) => handleChange({ target: { name: 'apMaterno', value: e.target.value } })}
@@ -585,10 +625,14 @@ const DemandaForm: React.FC = () => {
                             <div className="field col-12 md:col-4">
                                 <label htmlFor="run">Rut/Pasaporte/Cédula</label>
                                 <InputText
-                                    id="run" 
-                                    value={formData.run} 
-                                    onChange={(e) => handleChange({ target: { name: 'run', value: e.target.value } })} 
-                                    placeholder="Ingrese Rut/Pasaporte/Cédula" />
+                                    id="run"
+                                    value={rutCliente.value}
+                                    onChange={(e) => rutCliente.onChange(e.target.value)}
+                                    placeholder="Ingrese Rut/Pasaporte/Cédula"
+                                    className={classNames({ 'p-invalid': !!rutCliente.error })}
+                                />
+                                {rutCliente.error && <small className="p-error">{rutCliente.error}</small>}
+                                {!rutCliente.error && rutCliente.hint && <small className="p-helper">{rutCliente.hint}</small>}
                             </div>
 
                             <div className="field col-12 md:col-4">
@@ -657,9 +701,18 @@ const DemandaForm: React.FC = () => {
                         </div>
 
                         <div className="field col-12 md:col-4">
-                            <label htmlFor="rutRazonSocial">Rut</label>
-                            <InputText id="rutRazonSocial" value={formData.rutRazonSocial} onChange={(e) => handleChange({ target: { name: 'rutRazonSocial', value: e.target.value } })} placeholder="Ingrese rut" />
-                        </div>
+  <label htmlFor="rutRazonSocial">RUT Empresa</label>
+  <InputText
+    id="rutRazonSocial"
+    value={rutEmpresa.value}
+    onChange={(e) => rutEmpresa.onChange(e.target.value)}
+    placeholder="Ingrese RUT de la empresa"
+    className={classNames({ 'p-invalid': !!rutEmpresa.error })}
+  />
+  {rutEmpresa.error && <small className="p-error">{rutEmpresa.error}</small>}
+  {!rutEmpresa.error && rutEmpresa.hint && <small className="p-helper">{rutEmpresa.hint}</small>}
+</div>
+
 
                         <div className="field col-12 md:col-4">
                             <label htmlFor="domicilioRazonSocial">Domicilio</label>
@@ -699,7 +752,7 @@ const DemandaForm: React.FC = () => {
                             setDemandadoSol(row);
                             setSubmitted(false);
                             setDemandadoSolDialog(true);
-                            }}
+                        }}
 
                     >
                         <Column selectionMode="multiple" headerStyle={{ width: '4rem' }}></Column>
@@ -735,13 +788,13 @@ const DemandaForm: React.FC = () => {
                             <label htmlFor="rutDemandadoSol">RUT</label>
                             <InputText
                                 id="rutDemandadoSol"
-                                value={demandadoSol.rut}
-                                onChange={(e) => setDemandadoSol((p) => ({ ...p, rut: e.target.value }))}
+                                value={rutDemSol.value}
+                                onChange={(e) => rutDemSol.onChange(e.target.value)}
                                 required
                                 placeholder="Ingrese Rut de la Razón Social"
-                                className={classNames({ 'p-invalid': submitted && !demandadoSol.rut })}
+                                className={classNames({ 'p-invalid': submitted && !rutDemSol.value || !!rutDemSol.error })}
                             />
-                            {submitted && !demandadoSol.rut && <small className="p-invalid">RUT es requerido.</small>}
+                            {rutDemSol.error && <small className="p-error">{rutDemSol.error}</small>}
                         </div>
                         <div className="field">
                             <label htmlFor="domicilioDemandadoSol">Domicilio</label>
@@ -771,13 +824,13 @@ const DemandaForm: React.FC = () => {
                             <label htmlFor="runRepresentanteLegalDemandadoSol">Rut Representante Legal</label>
                             <InputText
                                 id="runRepresentanteLegalDemandadoSol"
-                                value={demandadoSol.runRepresentanteLegal}
-                                onChange={(e) => setDemandadoSol((p) => ({ ...p, runRepresentanteLegal: e.target.value }))}
+                                value={rutRepLegal.value}
+                                onChange={(e) => rutRepLegal.onChange(e.target.value)}
                                 required
                                 placeholder="Ingrese Rut del representante legal"
-                                className={classNames({ 'p-invalid': submitted && !demandadoSol.runRepresentanteLegal })}
+                                className={classNames({ 'p-invalid': submitted && !rutRepLegal.value || !!rutRepLegal.error })}
                             />
-                            {submitted && !demandadoSol.runRepresentanteLegal && <small className="p-invalid">Rut Representante Legal es requerido.</small>}
+                            {rutRepLegal.error && <small className="p-error">{rutRepLegal.error}</small>}
                         </div>
                     </Dialog>
                     <Dialog
@@ -804,7 +857,7 @@ const DemandaForm: React.FC = () => {
                 <div className="card">
                     <h5>RELACIÓN LABORAL</h5>
                     <div className="p-fluid formgrid grid">
-                        <div className="field col-12 md:col-3">
+                        <div className="field col-12 md:col-4">
                             <label htmlFor="fechaInicioRelacionLaboral">Fecha Inicio Relación Laboral</label>
                             <Calendar
                                 id="fechaInicioRelacionLaboral"
@@ -817,7 +870,7 @@ const DemandaForm: React.FC = () => {
                             />
                         </div>
 
-                        <div className="field col-12 md:col-3">
+                        <div className="field col-12 md:col-4">
                             <label htmlFor="naturalezaContrato">Naturaleza del Contrato</label>
                             <Dropdown
                                 id="naturalezaContrato"
@@ -830,15 +883,17 @@ const DemandaForm: React.FC = () => {
                             />
                         </div>
 
-                        <div className="field col-12 md:col-6">
-                            <label htmlFor="funciones">Funciones</label>
-                            <InputTextarea id="funciones" value={formData.funciones} onChange={(e) => handleChange({ target: { name: 'funciones', value: e.target.value } })} placeholder="Ingrese sus funciones" rows={5} cols={30} />
-                        </div>
-
                         <div className="field col-12 md:col-4">
                             <label htmlFor="lugar">Lugar</label>
                             <InputText id="lugar" value={formData.lugar} onChange={(e) => handleChange({ target: { name: 'lugar', value: e.target.value } })} placeholder="Domicilio dónde trabajó" />
                         </div>
+
+                        <div className="field col-12 md:col-12">
+                            <label htmlFor="funciones">Funciones</label>
+                            <InputTextarea id="funciones" value={formData.funciones} onChange={(e) => handleChange({ target: { name: 'funciones', value: e.target.value } })} placeholder="Ingrese sus funciones" rows={5} cols={30} />
+                        </div>
+
+                        
 
                         <div className="field col-12 md:col-4">
                             <label htmlFor="jornada">Jornada</label>

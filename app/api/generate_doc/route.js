@@ -51,6 +51,33 @@ export async function POST(request) {
       },
     });
 
+    // 2) Normaliza la fuente desde DB (si mañana cambias el nombre de la relación, solo tocas aquí)
+    const demandadoSolidariosDB = Array.isArray(demandaDB?.demandadoSolidario)
+      ? demandaDB.demandadoSolidario
+      : [];
+
+    // 3) SOLO usa lo del body si es un array con elementos; si viene vacío o inexistente, usa DB
+    const bodyHasSolidarios = Array.isArray(raw?.demandadoSolidarios) && raw.demandadoSolidarios.length > 0;
+    const sourceSolidarios = bodyHasSolidarios ? raw.demandadoSolidarios : demandadoSolidariosDB;
+
+
+    // DEBUG para ver qué nombre trae datos realmente
+    console.log('DBG keys:', Object.keys(demandaDB || {}));
+    console.log('DBG lengths:', {
+      demandadoSolidario: Array.isArray(demandaDB?.demandadoSolidario) ? demandaDB.demandadoSolidario.length : null,
+      demandadoSols: Array.isArray(demandaDB?.demandadoSols) ? demandaDB.demandadoSols.length : null,
+      demandadoSolidarios: Array.isArray(demandaDB?.demandadoSolidarios) ? demandaDB.demandadoSolidarios.length : null,
+    });
+
+    // Toma la lista que exista (solo una será array)
+    const solidariosDB =
+      Array.isArray(demandaDB?.demandadoSolidario) ? demandaDB.demandadoSolidario :
+        Array.isArray(demandaDB?.demandadoSols) ? demandaDB.demandadoSols :
+          Array.isArray(demandaDB?.demandadoSolidarios) ? demandaDB.demandadoSolidarios :
+            [];
+
+    console.log('DBG solidariosDB length:', solidariosDB.length);
+
     if (!demandaDB) {
       return NextResponse.json(
         { success: false, error: 'Demanda no encontrada' },
@@ -74,21 +101,22 @@ export async function POST(request) {
         nacionalidad: demandaDB?.nacionalidad ?? '',
         correoElectronico: demandaDB.correoElectronico ?? '',
         estadoCivil: demandaDB?.estadoCivil ?? '',
+        domicilioParticular: demandaDB.domicilioParticular ?? '',
 
-        demandadoSols: Array.isArray(demandaDB?.demandadoSols)
-          ? demandaDB.demandadoSols.map((x) => ({
+        demandadoSols: Array.isArray(demandaDB?.demandadoSolidario)
+          ? demandaDB.demandadoSolidario.map((x) => ({
             id: x.id,
-            nombre: x.nombre ?? '',
+            nombreRazonSocial: x.nombreRazonSocial ?? '',
             rut: x.rut ?? '',
             domicilio: x.domicilio ?? '',
+            representanteLegal: x.representanteLegal ?? '',
+            runRepresentanteLegal: x.runRepresentanteLegal ?? '',
           }))
           : [],
 
         nombreRazonSocial: demandaDB?.nombreRazonSocial ?? '',
         rutRazonSocial: demandaDB?.rutRazonSocial ?? '',
         domicilioRazonSocial: demandaDB?.domicilioRazonSocial ?? '',
-        representanteLegal: demandaDB?.representanteLegal ?? '',
-        runRepresentanteLegal: demandaDB?.runRepresentanteLegal ?? '',
 
         fechaInicioRelacionLaboral: demandaDB?.fechaInicioRelacionLaboral
           ? new Date(demandaDB.fechaInicioRelacionLaboral).toISOString()
@@ -124,19 +152,22 @@ export async function POST(request) {
         materias: Array.isArray(demandaDB?.materias) ? demandaDB.materias : [],
       });
 
-    const demandadosSerializados = raw?.demandadoSolidarios
-      ? safeSerializeDemandados(raw.demandadoSolidarios)
-      : safeSerializeDemandados(
-        Array.isArray(demandaDB?.demandadoSolidario)
-          ? demandaDB.demandadoSolidario.map((x) => ({
-            id: x.id,
-            nombre: x.nombre ?? '',
-            rut: x.rut ?? '',
-            domicilio: x.domicilio ?? '',
-          }))
-          : []
-      );
-
+    const demandadosSerializados = safeSerializeDemandados(
+  sourceSolidarios.map((x) => ({
+    id: x.id,
+    nombreRazonSocial: x.nombreRazonSocial ?? '',
+    rut: x.rut ?? '',
+    domicilio: x.domicilio ?? '',
+    representanteLegal: x.representanteLegal ?? '',
+    runRepresentanteLegal: x.runRepresentanteLegal ?? '',
+  }))
+);
+    console.log('DBG demandadosSerializados length2:', demandaDB.demandadoSolidario.length);
+    console.log('DBG demandadosSerializados length:', demandadosSerializados.length);
+    // (opcional) logs de verificación
+console.log('DBG solidariosDB length:', solidariosDB.length);
+console.log('DBG bodyHasSolidarios:', bodyHasSolidarios, ' (si true, pisó DB)');
+console.log('DBG demandadosSerializados length:', demandadosSerializados.length);
     // >>> AQUÍ VA TU BLOQUE NUEVO <<<
     // 3) Data formateada para la plantilla (nombres en mayúsculas, fechas largas, RUT, CLP, etc.)
     const demandaFmt = decorateDemandaForDocx(demandaSerializada);
@@ -145,6 +176,7 @@ export async function POST(request) {
 
     // (opcional) ya no uses la función antigua formatFecha() para la portada:
     const fechaEmisionLarga = formatFechaLargaDate(new Date());
+    const hasDemandadoSolidarios = demandadoSolidariosFmt.length > 0;
 
     // 3) Data para la plantilla DOCX
     const templateData = {
@@ -153,6 +185,7 @@ export async function POST(request) {
       demandadoSolidarios: demandadosSerializados, // crudo
       demandaFmt,                                  // formateado listo para imprimir
       demandadoSolidariosFmt,                      // formateado listo para imprimir
+      hasDemandadoSolidarios,
     };
 
     // 4) Leer plantilla

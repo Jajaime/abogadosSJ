@@ -57,9 +57,11 @@ const joinCSV = (arr?: string[]) =>
 export function safeSerializeDemandados(list: DemandadoSolDTO[] = []) {
   return list.map((x) => ({
     id: x.id ?? '',
-    nombre: x.nombre ?? '',
+    nombreRazonSocial: x.nombreRazonSocial ?? '',
     rut: x.rut ?? '',
     domicilio: x.domicilio ?? '',
+    representanteLegal: x.representanteLegal ?? '',
+    runRepresentanteLegal: x.runRepresentanteLegal ?? '',
   }));
 }
 
@@ -87,15 +89,13 @@ export function safeSerializeDemanda(d: DemandaDTO) {
     nacionalidad: nacionalidadStr,
     correoElectronico: d.correoElectronico ?? '',
     estadoCivil: estadoCivilStr,
+    domicilioParticular: d.domicilioParticular ?? '',
 
     demandadoSols: demandaSols, // lista lista para loops
 
     nombreRazonSocial: d.nombreRazonSocial ?? '',
     rutRazonSocial: d.rutRazonSocial ?? '',
     domicilioRazonSocial: d.domicilioRazonSocial ?? '',
-    representanteLegal: d.representanteLegal ?? '',
-    runRepresentanteLegal: d.runRepresentanteLegal ?? '',
-
     fechaInicioRelacionLaboral: finicioISO,
     naturalezaContrato: d.naturalezaContrato ?? '',
     funciones: d.funciones ?? '',

@@ -5,6 +5,22 @@ import {
 
 // Ajusta los nombres de campos a tu DTO real:
 export function decorateDemandaForDocx(d: any) {
+
+  const materias_texto = listaNatural(
+    Array.isArray(d?.materias) ? d.materias : [],
+    { upper: true, period: false, conjuncion: 'y' }
+  );
+
+  const materias_texto_2 = listaNatural(
+    Array.isArray(d?.materias) ? d.materias : [],
+    { upper: false, period: false, conjuncion: 'y' }
+  );
+
+  const prestacionesAdeudadas_texto = listaNatural(
+    Array.isArray(d?.prestacionesAdeudadas) ? d.prestacionesAdeudadas : [],
+    { upper: true, period: true, conjuncion: 'y' }
+  );
+
   return {
     // variantes comunes
     nombres_upper: toUpperCL(`${d?.nombres ?? ''} ${d?.apPaterno ?? ''} ${d?.apMaterno ?? ''}`.trim()),
@@ -19,13 +35,17 @@ export function decorateDemandaForDocx(d: any) {
 
     nombreRazonSocial_upper: toUpperCL(d?.nombreRazonSocial),
     rutRazonSocial_fmt: formatRut(d?.rutRazonSocial),
+    domicilioRazonSocial_upper: toUpperCL(d?.domicilioRazonSocial),
+    domicilioParticular_upper: toUpperCL(d?.domicilioParticular),
 
-    representanteLegal_title: toTitleCL(d?.representanteLegal),
-    runRepresentanteLegal_fmt: formatRut(d?.runRepresentanteLegal),
+    // variantes específicas
+
+    
 
     // listas / arrays
-    materias_texto: listaNatural(Array.isArray(d?.materias) ? d.materias : []),
-    prestacionesAdeudadas_texto: listaNatural(Array.isArray(d?.prestacionesAdeudadas) ? d.prestacionesAdeudadas : []),
+    materias_texto,
+    materias_texto_2,
+    prestacionesAdeudadas_texto,
 
     // domicilio y otros campos con casing deseado
     domicilioParticular_title: toTitleCL(d?.domicilioParticular),
@@ -39,9 +59,11 @@ export function decorateDemandaForDocx(d: any) {
 export function decorateDemandadoSolidarioForDocx(x: any) {
   return {
     ...x,
-    nombre_upper: toUpperCL(x?.nombre),
+    nombre_upper: toUpperCL(x?.nombreRazonSocial),
     rut_fmt: formatRut(x?.rut),
     domicilio_title: toTitleCL(x?.domicilio),
     domicilio_upper: toUpperCL(x?.domicilio),
+    representanteLegal_upper: toUpperCL(x?.representanteLegal),
+    runRepresentanteLegal_fmt: formatRut(x?.runRepresentanteLegal),
   };
 }

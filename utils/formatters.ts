@@ -34,10 +34,46 @@ export function formatRut(rut?: string) {
   return `${conPuntos}-${dv}`;
 }
 
-export function listaNatural(items?: string[], conjuncion = 'y') {
-  const a = (items ?? []).filter(Boolean);
-  if (a.length === 0) return '';
-  if (a.length === 1) return a[0];
-  if (a.length === 2) return `${a[0]} ${conjuncion} ${a[1]}`;
-  return `${a.slice(0, -1).join(', ')} ${conjuncion} ${a[a.length - 1]}`;
+// utils/formatters.ts
+export type ListaNaturalOpts = {
+  upper?: boolean;       // Pone todo en MAYÚSCULAS (respeta acentos con es-CL)
+  period?: boolean;      // Agrega punto final si falta
+  conjuncion?: string;   // Por defecto 'y'
+};
+
+function _cleanItem(s: string) {
+  // recorta, colapsa espacios internos y elimina puntuación final suelta
+  return s
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[,\.;:\s]+$/g, '');
 }
+
+export function listaNatural(
+  items?: Array<string | null | undefined>,
+  opts: ListaNaturalOpts = {}
+) {
+  const { upper = false, period = false, conjuncion = 'y' } = opts;
+
+  // 1) limpia y filtra
+  const a = (items ?? []).map(x => (x ?? '') + '').map(_cleanItem).filter(Boolean);
+  if (a.length === 0) return '';
+
+  // 2) arma la oración con comas y conjunción
+  const conj = upper ? conjuncion.toLocaleUpperCase('es-CL') : conjuncion;
+  let joined =
+    a.length === 1
+      ? a[0]
+      : a.length === 2
+        ? `${a[0]} ${conj} ${a[1]}`
+        : `${a.slice(0, -1).join(', ')}, ${conj} ${a[a.length - 1]}`;
+
+  // 3) mayúsculas (locale Spanish para acentos correctos)
+  if (upper) joined = joined.toLocaleUpperCase('es-CL');
+
+  // 4) punto final si se pidió y no existe
+  if (period && !/[.!?]$/.test(joined)) joined += '.';
+
+  return joined;
+}
+
