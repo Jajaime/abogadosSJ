@@ -11,6 +11,7 @@ import { safeSerializeDemanda, safeSerializeDemandados } from '@/utils/serialize
 import { decorateDemandaForDocx, decorateDemandadoSolidarioForDocx } from '@/utils/decorateDemanda';
 import { formatFechaLargaDate } from '@/utils/formatters';
 import { prisma } from '@/lib/prisma';
+import { findDemandaForUser } from '@/lib/demanda';
 import { requireSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';
@@ -131,14 +132,16 @@ export async function POST(request) {
       demanda,
     } = parsed.data;
 
-    // 1) Buscar en DB (fuente de verdad / fallback)
-    const demandaDB = await prisma.demanda.findUnique({
-      where: { id: demandaId },
-      include: {
-        // Ajusta al nombre real de tu relación en el schema
-        demandadoSolidario: true,
-      },
-    });
+    // Sustituye el bloque “1) Buscar en DB” por esto:
+const demandaDB = await prisma.demanda.findFirst({
+  where: {
+    id: demandaId,
+    usuarioId: session.userId, // ajusta si tu campo se llama distinto
+  },
+  include: { 
+    demandadoSolidario: true,  // ⚠️ cámbialo al nombre exacto de tu relación
+  },
+});
 
     if (!demandaDB) {
       return NextResponse.json(
@@ -322,3 +325,4 @@ export async function POST(request) {
     return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 });
   }
 }
+

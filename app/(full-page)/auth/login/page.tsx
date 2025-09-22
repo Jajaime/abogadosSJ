@@ -3,6 +3,7 @@ import { useRouter } from 'next/navigation';
 import React, { FormEvent, useContext, useRef, useState } from 'react';
 import { apiFetch } from '@/utils/apiClient';
 import { Button } from 'primereact/button';
+import { Checkbox } from 'primereact/checkbox';
 import { Password } from 'primereact/password';
 import { LayoutContext } from '../../../../layout/context/layoutcontext';
 import { InputText } from 'primereact/inputtext';
@@ -15,6 +16,7 @@ const LoginPage = () => {
     const [submitting, setSubmitting] = useState(false);
     const { layoutConfig } = useContext(LayoutContext);
     const message = useRef<Messages>(null);
+    const [checked, setChecked] = useState(false);
 
     const router = useRouter();
     const containerClassName = classNames(
@@ -109,9 +111,13 @@ const LoginPage = () => {
                                     required
                                 />
                             </div>
-
                             <Messages ref={message} />
-
+                              <div className="flex align-items-center justify-content-between">
+                                <div className="flex align-items-center">
+                                    <Checkbox inputId="rememberme1" checked={checked} onChange={(e) => setChecked(e.checked ?? false)} className="mr-2" aria-checked={checked} />
+                                    <label htmlFor="rememberme1">Recordarme</label>
+                                </div>
+                            </div>
                             <Button type="submit" label="Ingresar" className="w-full p-3 text-xl" loading={submitting} disabled={submitting} />
                         </form>
                     </div>

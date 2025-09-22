@@ -8,8 +8,8 @@ import { buildSessionCookies, createUserSession } from '@/lib/auth';
 export const runtime = 'nodejs';
 
 const loginSchema = z.object({
-    email: z.string().email('Correo no v�lido').max(320),
-    password: z.string().min(1, 'La contrase�a es obligatoria').max(255)
+    email: z.string().email('Correo no válido').max(320),
+    password: z.string().min(1, 'La contraseña es obligatoria').max(255)
 });
 
 export async function POST(request: Request) {
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
         if (!parsed.success) {
             const detail = parsed.error.issues.map((issue) => issue.message).join(', ');
-            return NextResponse.json({ error: 'Credenciales inv�lidas', detail }, { status: 400 });
+            return NextResponse.json({ error: 'Credenciales inválidas', detail }, { status: 400 });
         }
 
         const { email, password } = parsed.data;
@@ -30,12 +30,12 @@ export async function POST(request: Request) {
         });
 
         if (!user?.passwordHash) {
-            return NextResponse.json({ error: 'Credenciales inv�lidas' }, { status: 401 });
+            return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 });
         }
 
         const passwordMatches = await bcrypt.compare(password, user.passwordHash);
         if (!passwordMatches) {
-            return NextResponse.json({ error: 'Credenciales inv�lidas' }, { status: 401 });
+            return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 });
         }
 
         const issued = await createUserSession(user.id, user.roles ?? []);

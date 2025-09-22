@@ -136,5 +136,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/((?!_next/static|_next/image|favicon.ico|auth/login|api/login|api/auth/refresh).*)']
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.json|themes/|auth/login|api/login|api/auth/refresh).*)',
+  ],
 };
+

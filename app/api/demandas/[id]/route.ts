@@ -1,5 +1,8 @@
 // app/api/demandas/[id]/route.ts
 import { NextResponse } from 'next/server';
+
+import { requireSession } from '@/lib/auth';
+import { findDemandaForUser } from '@/lib/demanda';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -32,51 +35,82 @@ const boolNormalize = (v: any): boolean => {
   return Boolean(v);
 };
 
-/** GET /api/demandas/:id */
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  try {
-    const { id: idStr } = await ctx.params;
-    const id = Number(idStr);
-    if (Number.isNaN(id)) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
-
-    const demanda = await prisma.demanda.findUnique({
-      where: { id },
-      include: { demandadoSolidario: true }
-    });
-    if (!demanda) return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
-
-    const response = {
-      ...demanda,
-      demandadoSols: demanda.demandadoSolidario.map((d) => ({
+const toResponsePayload = (demanda: any) => ({
+  ...demanda,
+  demandadoSols: Array.isArray(demanda.demandadoSolidario)
+    ? demanda.demandadoSolidario.map((d: any) => ({
         id: d.id,
         nombre: d.nombreRazonSocial,
         rut: d.rut,
         domicilio: d.domicilio,
         representanteLegal: d.representanteLegal,
-        runRepresentanteLegal: d.runRepresentanteLegal
+        runRepresentanteLegal: d.runRepresentanteLegal,
       }))
-    };
-    return NextResponse.json(response, { status: 200 });
+    : [],
+});
+
+/** GET /api/demandas/:id */
+export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await requireSession();
+    const { id: idStr } = await ctx.params;
+    const id = Number(idStr);
+    if (Number.isNaN(id)) {
+      return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
+    }
+
+    const demanda = await findDemandaForUser(id, session.userId, { include: { demandadoSolidario: true } });
+    if (!demanda) {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
+    }
+
+    return NextResponse.json(toResponsePayload(demanda), { status: 200 });
   } catch (error) {
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
+    console.error('Error al obtener demanda:', error);
     return NextResponse.json({ error: 'Error al obtener demanda' }, { status: 500 });
   }
 }
 
 /** PUT /api/demandas/:id */
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const { id: idStr } = await ctx.params;
-  const id = Number(idStr);
-  if (Number.isNaN(id)) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
-
   try {
+    const session = await requireSession();
+    const { id: idStr } = await ctx.params;
+    const id = Number(idStr);
+    if (Number.isNaN(id)) {
+      return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
+    }
+
+    const existing = await findDemandaForUser(id, session.userId);
+    if (!existing) {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
+    }
+
     const data = await req.json();
     const updateData: any = {};
 
-    const setIfString = (key: string, val: any) => { if (val !== undefined) updateData[key] = strFrom(val); };
-    const setIfDate = (key: string, val: any) => { if (val !== undefined) { const d = dateFrom(val); if (!d) throw new Error(`Fecha inválida en '${key}'`); updateData[key] = d; } };
-    const setIfNumber = (key: string, val: any) => { if (val !== undefined) updateData[key] = numOrNull(val) ?? undefined; };
-    const setIfBool = (key: string, val: any) => { if (val !== undefined) updateData[key] = boolNormalize(val); };
-    const setIfStringArray = (key: string, val: any) => { if (val !== undefined) updateData[key] = Array.isArray(val) ? val.map(strFrom) : []; };
+    const setIfString = (key: string, val: any) => {
+      if (val !== undefined) updateData[key] = strFrom(val);
+    };
+    const setIfDate = (key: string, val: any) => {
+      if (val !== undefined) {
+        const d = dateFrom(val);
+        if (!d) throw new Error(`Fecha inválida en '${key}'`);
+        updateData[key] = d;
+      }
+    };
+    const setIfNumber = (key: string, val: any) => {
+      if (val !== undefined) updateData[key] = numOrNull(val) ?? undefined;
+    };
+    const setIfBool = (key: string, val: any) => {
+      if (val !== undefined) updateData[key] = boolNormalize(val);
+    };
+    const setIfStringArray = (key: string, val: any) => {
+      if (val !== undefined) updateData[key] = Array.isArray(val) ? val.map(strFrom) : [];
+    };
 
     // Cliente
     setIfString('nombres', data.nombres);
@@ -116,7 +150,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     setIfString('motivoTermino', data.motivoTermino);
     setIfString('tipoDespido', data.tipoDespido);
     setIfString('despidoDisciplinario', data.despidoDisciplinario);
-    if (data.otroDespidoDisciplinario !== undefined) updateData.otroDespidoDisciplinario = data.otroDespidoDisciplinario ? strFrom(data.otroDespidoDisciplinario) : null;
+    if (data.otroDespidoDisciplinario !== undefined)
+      updateData.otroDespidoDisciplinario = data.otroDespidoDisciplinario ? strFrom(data.otroDespidoDisciplinario) : null;
     setIfBool('anosServicios', data.anosServicios);
     setIfBool('mesAviso', data.mesAviso);
     setIfBool('finiquito', data.finiquito);
@@ -137,9 +172,9 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
               rut: strFrom(d?.rut),
               domicilio: strFrom(d?.domicilio),
               representanteLegal: strFrom(d?.representanteLegal),
-              runRepresentanteLegal: strFrom(d?.runRepresentanteLegal)
+              runRepresentanteLegal: strFrom(d?.runRepresentanteLegal),
             })),
-            skipDuplicates: true
+            skipDuplicates: true,
           });
         }
       }
@@ -147,22 +182,15 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       return tx.demanda.findUnique({ where: { id }, include: { demandadoSolidario: true } });
     });
 
-    if (!updated) return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
+    if (!updated) {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
+    }
 
-    const response = {
-      ...updated,
-      demandadoSols: updated.demandadoSolidario.map((d) => ({
-        id: d.id,
-        nombre: d.nombreRazonSocial,
-        rut: d.rut,
-        domicilio: d.domicilio,
-        representanteLegal: d.representanteLegal,
-        runRepresentanteLegal: d.runRepresentanteLegal
-      }))
-    };
-
-    return NextResponse.json(response, { status: 200 });
+    return NextResponse.json(toResponsePayload(updated), { status: 200 });
   } catch (error: any) {
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
     if (error?.code === 'P2025') {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
     }
@@ -179,17 +207,30 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
 
 /** DELETE /api/demandas/:id */
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const { id: idStr } = await ctx.params;
-  const id = Number(idStr);
-  if (Number.isNaN(id)) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
-
   try {
+    const session = await requireSession();
+    const { id: idStr } = await ctx.params;
+    const id = Number(idStr);
+    if (Number.isNaN(id)) {
+      return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
+    }
+
+    const existing = await findDemandaForUser(id, session.userId);
+    if (!existing) {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
+    }
+
     await prisma.demanda.delete({ where: { id } });
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error: any) {
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
     if (error?.code === 'P2025') {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
     }
+    console.error('Error al eliminar demanda:', error);
     return NextResponse.json({ error: 'Error al eliminar demanda' }, { status: 500 });
   }
 }
+
