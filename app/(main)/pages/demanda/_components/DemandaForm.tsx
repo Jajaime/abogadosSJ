@@ -20,6 +20,7 @@ import { MultiSelect } from 'primereact/multiselect';
 // imports nuevos
 import { useRut } from '@/hooks/useRut';
 import { apiFetch } from '@/utils/apiClient';
+import { ValidatedInputText, ValidatedDropdown, ValidatedCalendar, ValidatedInputNumber } from '@/components/Validated';
 
 import type { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
 
@@ -69,6 +70,7 @@ const DemandaForm: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [globalFilter, setGlobalFilter] = useState('');
   const [deleteDialog, setDeleteDialog] = useState(false);
+  const [missingFields, setMissingFields] = useState<string[]>([]);
 
   // ---- prestaciones (MultiSelect guarda objetos; enviamos nombres)
   const [dropdownItemPrestacionesAdeudada, setDropdownItemPrestacionesAdeudada] = useState<DropdownItem[]>([]);
@@ -393,11 +395,91 @@ const DemandaForm: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demandadoSolDialog]);
 
+  useEffect(() => {
+    if (formData.motivoTermino !== 'Despido' && (formData.tipoDespido || formData.despidoDisciplinario || formData.otroDespidoDisciplinario)) {
+      setFormData((prev) => ({
+        ...prev,
+        tipoDespido: '',
+        despidoDisciplinario: '',
+        otroDespidoDisciplinario: ''
+      }));
+      setRadioValueAnosServicio(null);
+      setRadioValueMesAviso(null);
+    }
+  }, [formData.motivoTermino,formData.tipoDespido, formData.despidoDisciplinario, formData.otroDespidoDisciplinario]);
+
+  useEffect(() => {
+    if (formData.tipoDespido !== 'Disciplinario' && (formData.despidoDisciplinario || formData.otroDespidoDisciplinario)) {
+      setFormData((prev) => ({ ...prev, despidoDisciplinario: '', otroDespidoDisciplinario: '' }));
+    }
+    if (formData.tipoDespido !== 'Necesidades de la Empresa' && (radioValueAnosServicio || radioValueMesAviso)) {
+      setRadioValueAnosServicio(null);
+      setRadioValueMesAviso(null);
+      setFormData((prev) => ({ ...prev, anosServicios: false, mesAviso: false }));
+    }
+  }, [formData.tipoDespido, formData.despidoDisciplinario, formData.otroDespidoDisciplinario, radioValueAnosServicio, radioValueMesAviso]);
+
+
+
   // ===================== Handlers =====================
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement> | { target: { name: string; value: any } }) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement> | { target: { name: string; value: any } }
+  ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    setFormData((prev) => {
+      let next = { ...prev, [name]: value };
+
+      // ——— Dependencias de "motivoTermino"
+      if (name === 'motivoTermino') {
+        if (value !== 'Despido') {
+          // Oculta y limpia cascada de "despido"
+          next.tipoDespido = '';
+          next.despidoDisciplinario = '';
+          next.otroDespidoDisciplinario = '';
+          // además limpia radios asociados a "Necesidades de la Empresa"
+          next.anosServicios = false;
+          next.mesAviso = false;
+          // limpia estados visuales de radios
+          setRadioValueAnosServicio(null);
+          setRadioValueMesAviso(null);
+        }
+      }
+
+      // ——— Dependencias de "tipoDespido"
+      if (name === 'tipoDespido') {
+        // Si NO es Disciplinario, limpia sub-motivo y "otros"
+        if (value !== 'Disciplinario') {
+          next.despidoDisciplinario = '';
+          next.otroDespidoDisciplinario = '';
+        }
+        // Si NO es Necesidades de la Empresa, limpia radios
+        if (value !== 'Necesidades de la Empresa') {
+          next.anosServicios = false;
+          next.mesAviso = false;
+          setRadioValueAnosServicio(null);
+          setRadioValueMesAviso(null);
+        }
+      }
+
+      // ——— Dependencias de "despidoDisciplinario"
+      if (name === 'despidoDisciplinario') {
+        if (value !== 'Otros Especificar') {
+          next.otroDespidoDisciplinario = '';
+        }
+      }
+
+      // ——— Dependencias de "jornada"
+      if (name === 'jornada') {
+        if (value !== 'otra especificar') {
+          next.otraJornada = '';
+        }
+      }
+
+      return next;
+    });
   };
+
 
   const resetAll = () => {
     setFormData((prev) => ({
@@ -448,7 +530,7 @@ const DemandaForm: React.FC = () => {
       prestacionesAdeudadas: [],
       materias: [],
     }));
-  // reset radios y listas
+    // reset radios y listas
     setRadioValueRegAsistencia(null);
     setRadioValueLiquidacionSueldo(null);
     setRadioValueAnosServicio(null);
@@ -463,44 +545,95 @@ const DemandaForm: React.FC = () => {
     e.preventDefault();
     setSubmitted(true);
 
-    if (
-      !formData.nombres ||
-      !formData.apPaterno ||
-      !formData.apMaterno ||
-      !formData.run ||
-      !formData.fechaNacimiento ||
-      !formData.nacionalidad ||
-      !formData.correoElectronico ||
-      !formData.estadoCivil ||
-      !formData.domicilioParticular ||
-      !formData.nombreRazonSocial ||
-      !formData.rutRazonSocial ||
-      !formData.domicilioRazonSocial ||
-      !formData.fechaInicioRelacionLaboral ||
-      !formData.naturalezaContrato ||
-      !formData.funciones ||
-      !formData.lugar ||
-      !formData.jornada ||
-      !radioValueRegAsistencia ||
-      formData.remuneracion === null ||
-      !formData.formaPago ||
-      !radioValueLiquidacionSueldo ||
-      !formData.cotizacionSalud ||
-      !formData.cotizacionAfp ||
-      !formData.cotizacionAfc ||
-      formData.vacaciones === null ||
-      !formData.fuero ||
-      !formData.fechaTerminoRelaLaboral ||
-      !formData.motivoTermino
-    ) {
-      toast.current?.show({
-        severity: 'warn',
-        summary: 'Validación',
-        detail: 'Por favor complete los campos obligatorios.',
-        life: 4000,
-      });
-      return;
+    // --- VALIDACIÓN CONDICIONAL (reemplaza tu if gigante por este bloque)
+    const missing: string[] = [];
+
+    // helper corto
+    const req = (value: any, label: string) => {
+      const empty =
+        value === null ||
+        value === undefined ||
+        (typeof value === 'string' && value.trim() === '') ||
+        (typeof value === 'number' && Number.isNaN(value));
+      if (empty) missing.push(label);
+    };
+
+    // ===== Campos base =====
+    req(formData.nombres, 'Nombres');
+    req(formData.apPaterno, 'Apellido paterno');
+    req(formData.apMaterno, 'Apellido materno');
+    req(formData.run, 'RUT/Documento');
+    req(formData.fechaNacimiento, 'Fecha de nacimiento');
+    req(formData.nacionalidad, 'Nacionalidad');
+    req(formData.correoElectronico, 'Correo electrónico');
+    req(formData.estadoCivil, 'Estado civil');
+    req(formData.domicilioParticular, 'Domicilio particular');
+
+    req(formData.nombreRazonSocial, 'Razón social (empleador)');
+    req(formData.rutRazonSocial, 'RUT empresa');
+    req(formData.domicilioRazonSocial, 'Domicilio empleador');
+
+    req(formData.fechaInicioRelacionLaboral, 'Fecha inicio relación');
+    req(formData.naturalezaContrato, 'Naturaleza del contrato');
+    req(formData.funciones, 'Funciones');
+    req(formData.lugar, 'Lugar de trabajo');
+    req(formData.jornada, 'Jornada');
+
+    // radios relación laboral
+    if (radioValueRegAsistencia == null) missing.push('Registro de asistencia (Sí/No)');
+    req(formData.remuneracion, 'Remuneración');
+    req(formData.formaPago, 'Forma de pago');
+    if (radioValueLiquidacionSueldo == null) missing.push('Liquidaciones de sueldo (Sí/No)');
+
+    req(formData.cotizacionSalud, 'Cotizaciones Salud');
+    req(formData.cotizacionAfp, 'Cotizaciones AFP');
+    req(formData.cotizacionAfc, 'Cotizaciones AFC');
+    req(formData.vacaciones, 'Vacaciones (meses)');
+    req(formData.fuero, 'Fuero');
+
+    req(formData.fechaTerminoRelaLaboral, 'Fecha término relación');
+    req(formData.motivoTermino, 'Motivo de término');
+
+    // ===== Condicional: Jornada "otra especificar" =====
+    if (formData.jornada === 'otra especificar') {
+      req(formData.otraJornada, 'Especificar jornada');
     }
+
+    // ===== Condicional: Motivo = "Despido" =====
+    if (formData.motivoTermino === 'Despido') {
+      req(formData.tipoDespido, 'Tipo de despido');
+
+      // Subcondicional: Disciplinario
+      if (formData.tipoDespido === 'Disciplinario') {
+        req(formData.despidoDisciplinario, 'Causal disciplinaria');
+        if (formData.despidoDisciplinario === 'Otros Especificar') {
+          req(formData.otroDespidoDisciplinario, 'Detalle "Otros Especificar"');
+        }
+      }
+
+      // Subcondicional: Necesidades de la Empresa → radios obligatorios
+      if (formData.tipoDespido === 'Necesidades de la Empresa') {
+        if (radioValueAnosServicio == null) missing.push('¿Se pagaron años de servicio? (Sí/No)');
+        if (radioValueMesAviso == null) missing.push('¿Se pagó mes de aviso? (Sí/No)');
+      }
+    }
+
+    // ===== Radio de finiquito (siempre lo pides) =====
+    if (radioValueFiniquito == null) missing.push('Finiquito/Reserva (Sí/No)');
+
+    // Si hay faltantes, los mostramos y salimos
+    if (missing.length) {
+  setMissingFields(missing); // 👉 guarda faltantes
+  toast.current?.show({
+    severity: 'warn',
+    summary: 'Validación',
+    detail: `Faltan: ${missing.join(' · ')}`,
+    life: 5000,
+  });
+  return;
+} else {
+  setMissingFields([]); // limpia si no hay errores
+}
 
     // const requireSolidario = demandadoSols.length === 0 ... (si lo quieres, descomenta)
 
@@ -641,7 +774,7 @@ const DemandaForm: React.FC = () => {
     }
   };
 
-  const nombreBodyTemplate = (row: DemandadoSolDTO) => <>{row.nombre}</>;
+  const nombreBodyTemplate = (row: DemandadoSolDTO) => <>{row.nombreRazonSocial}</>;
   const rutBodyTemplate = (row: DemandadoSolDTO) => <>{row.rut}</>;
   const domicilioBodyTemplate = (row: DemandadoSolDTO) => <>{row.domicilio}</>;
   const representanteLegalBodyTemplate = (row: DemandadoSolDTO) => <>{row.representanteLegal}</>;
@@ -694,12 +827,23 @@ const DemandaForm: React.FC = () => {
 
               <div className="field col-12 md:col-4">
                 <label htmlFor="apPaterno">Apellido Paterno</label>
-                <InputText id="apPaterno" value={formData.apPaterno} onChange={(e) => handleChange({ target: { name: 'apPaterno', value: e.target.value } })} placeholder="Ingrese apellido paterno" />
+                <InputText
+                  id="apPaterno"
+                  value={formData.apPaterno} 
+                  onChange={(e) => handleChange({ target: { name: 'apPaterno', value: e.target.value } })} 
+                  placeholder="Ingrese apellido paterno"
+                  className={classNames({ 'p-invalid': missingFields.includes('Apellido paterno') })} 
+                />
+                {missingFields.includes('Apellido paterno') && <small className="p-invalid">Apellido Paterno es requerido.</small>}
               </div>
 
               <div className="field col-12 md:col-4">
                 <label htmlFor="apMaterno">Apellido Materno</label>
-                <InputText id="apMaterno" value={formData.apMaterno} onChange={(e) => handleChange({ target: { name: 'apMaterno', value: e.target.value } })} placeholder="Ingrese apellido materno" />
+                <InputText
+                 id="apMaterno" 
+                 value={formData.apMaterno} 
+                 onChange={(e) => handleChange({ target: { name: 'apMaterno', value: e.target.value } })} 
+                 placeholder="Ingrese apellido materno" />
               </div>
 
               <div className="field col-12 md:col-4">
@@ -851,13 +995,13 @@ const DemandaForm: React.FC = () => {
               <InputText
                 id="nombreDemandadoSol"
                 value={demandadoSol.nombreRazonSocial}
-                onChange={(e) => setDemandadoSol((p) => ({ ...p, nombre: e.target.value }))}
+                onChange={(e) => setDemandadoSol((p) => ({ ...p, nombreRazonSocial: e.target.value }))}
                 required
                 placeholder="Ingrese nombre de la Razón Social"
                 autoFocus
-                className={classNames({ 'p-invalid': submitted && !demandadoSol.nombre })}
+                className={classNames({ 'p-invalid': submitted && !demandadoSol.nombreRazonSocial })}
               />
-              {submitted && !demandadoSol.nombre && <small className="p-invalid">Nombre es requerido.</small>}
+              {submitted && !demandadoSol.nombreRazonSocial && <small className="p-invalid">Nombre es requerido.</small>}
             </div>
             <div className="field">
               <label htmlFor="rutDemandadoSol">RUT</label>
@@ -1180,11 +1324,6 @@ const DemandaForm: React.FC = () => {
                   <RadioButton inputId="anosServicios2" name="anosServicios" value="No" checked={radioValueAnosServicio === 'No'} onChange={(e) => setRadioValueAnosServicio(e.value)} />
                   <label htmlFor="anosServicios2">No</label>
                 </div>
-              </div>
-            )}
-
-            {formData.tipoDespido === 'Necesidades de la Empresa' && (
-              <div className="field col-12 md:col-4">
                 <label htmlFor="mesAviso">Se pagó mes de aviso</label>
                 <div className="field-radiobutton">
                   <RadioButton inputId="mesAviso" name="mesAviso" value="Sí" checked={radioValueMesAviso === 'Sí'} onChange={(e) => setRadioValueMesAviso(e.value)} />

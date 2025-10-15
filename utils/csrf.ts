@@ -1,29 +1,31 @@
-const CSRF_COOKIE_NAME = 'csrf_token';
+// /utils/csrf.ts
+import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/lib/jwt-public';
 
-export const getCsrfToken = (): string => {
-    if (typeof document === 'undefined') {
-        return '';
-    }
-    const cookies = document.cookie ? document.cookie.split(';') : [];
-    for (const cookie of cookies) {
-        const [name, ...rest] = cookie.trim().split('=');
-        if (name === CSRF_COOKIE_NAME) {
-            return decodeURIComponent(rest.join('='));
-        }
-    }
-    return '';
+/** Lee una cookie del navegador (solo lado cliente). */
+export const getCookie = (name: string): string | null => {
+  if (typeof document === 'undefined') return null;
+  const pattern = new RegExp(`(?:^|; )${name.replace(/[$()*+./?[\\\]^{|}-]/g, '\\$&')}=([^;]*)`);
+  const match = document.cookie.match(pattern);
+  return match ? decodeURIComponent(match[1]) : null;
 };
 
+/** Devuelve el token CSRF desde la cookie pública. */
+export const getCsrfToken = (): string => getCookie(CSRF_COOKIE_NAME) ?? '';
+
+/** Inyecta el header CSRF y asegura `credentials: 'include'` en mutaciones. */
 export const withCsrfHeader = (init: RequestInit = {}): RequestInit => {
-    const csrfToken = getCsrfToken();
-    if (!csrfToken) {
-        return { ...init, credentials: init.credentials ?? 'include' };
-    }
-    const headers = new Headers(init.headers ?? {});
-    headers.set('X-CSRF-Token', csrfToken);
-    return {
-        ...init,
-        headers,
-        credentials: init.credentials ?? 'include'
-    };
+  const csrf = getCsrfToken();
+  const headers = new Headers(init.headers || {});
+  if (csrf) headers.set(CSRF_HEADER_NAME, csrf);
+
+  // Si el caller mandó body como string y no seteó Content-Type, lo ponemos.
+  if (!headers.has('Content-Type') && init.body && typeof init.body === 'string') {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  return {
+    ...init,
+    headers,
+    credentials: init.credentials ?? 'include',
+  };
 };

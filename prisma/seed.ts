@@ -70,7 +70,7 @@ async function main() {
       apMaterno: 'Ramírez',
       run: '15.987.654-3',
       nacionalidad: 'Chilena',
-      estadoCivil: 'Soltera',
+      estadoCivil: 'Soltero(a)',
       fechaNacimiento: new Date('1990-11-02'),
       correoElectronico: 'maria.lopez@example.com',
       domicilioParticular: 'Calle Los Olivos 456, Antofagasta',

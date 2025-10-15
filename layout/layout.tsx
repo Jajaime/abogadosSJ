@@ -13,6 +13,9 @@ import { LayoutContext } from './context/layoutcontext';
 import { PrimeReactContext } from 'primereact/api';
 import { ChildContainerProps, LayoutState, AppTopbarRef } from '@/types';
 
+// ⬇️ NUEVO: guard de cliente
+import AuthGate from '@/components/AuthGate';
+
 function URLWatcher({
   hideMenu,
   hideProfileMenu
@@ -20,7 +23,7 @@ function URLWatcher({
   hideMenu: () => void;
   hideProfileMenu: () => void;
 }) {
-  // ⬇️ Estos hooks ahora viven dentro de un componente que irá envuelto en <Suspense>
+  // Estos hooks viven dentro de un componente envuelto en <Suspense>
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -34,7 +37,7 @@ function URLWatcher({
 
 const Layout = ({ children }: ChildContainerProps) => {
   const { layoutConfig, layoutState, setLayoutState } = useContext(LayoutContext);
-  const { setRipple } = useContext(PrimeReactContext); // (si no lo usas, quítalo)
+  const { setRipple } = useContext(PrimeReactContext); // (si no lo usas, puedes quitarlo)
   const topbarRef = useRef<AppTopbarRef>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -120,25 +123,28 @@ const Layout = ({ children }: ChildContainerProps) => {
 
   return (
     <>
-      {/* ⬇️ Suspense boundary por encima de donde se usan los hooks */}
+      {/* Suspense boundary encima de donde se usan los hooks */}
       <Suspense fallback={null}>
         <URLWatcher hideMenu={hideMenu} hideProfileMenu={hideProfileMenu} />
       </Suspense>
 
-      <div className={containerClass}>
-        <AppTopbar ref={topbarRef} />
-        <div ref={sidebarRef} className="layout-sidebar">
-          <Suspense fallback={null}>
-            <AppSidebar />
-          </Suspense>
+      {/* ⬇️ NUEVO: Envuelve TODO el layout con el guard */}
+      <AuthGate fallback={<div className="p-4">Cargando sesión…</div>}>
+        <div className={containerClass}>
+          <AppTopbar ref={topbarRef} />
+          <div ref={sidebarRef} className="layout-sidebar">
+            <Suspense fallback={null}>
+              <AppSidebar />
+            </Suspense>
+          </div>
+          <div className="layout-main-container">
+            <div className="layout-main">{children}</div>
+            <AppFooter />
+          </div>
+          <AppConfig />
+          <div className="layout-mask"></div>
         </div>
-        <div className="layout-main-container">
-          <div className="layout-main">{children}</div>
-          <AppFooter />
-        </div>
-        <AppConfig />
-        <div className="layout-mask"></div>
-      </div>
+      </AuthGate>
     </>
   );
 };

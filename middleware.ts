@@ -1,143 +1,135 @@
+// middleware.ts
 import { NextResponse, type NextRequest } from 'next/server';
+import {
+  ACCESS_TOKEN_COOKIE_NAME,
+  CSRF_COOKIE_NAME,
+  CSRF_HEADER_NAME,
+  REFRESH_TOKEN_COOKIE_NAME,
+} from '@/lib/jwt-public'; // <- Edge/client-safe
 
-import { ACCESS_TOKEN_COOKIE_NAME, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, REFRESH_TOKEN_COOKIE_NAME, verifyAccessTokenJwt } from '@/lib/jwt';
+// Rutas públicas que NO requieren auth (puedes ajustar)
+const PUBLIC_PATHS = new Set<string>([
+  '/auth/login',
+  '/auth/error',
+  '/auth/access',        // o '/auth/access-denied'
+  '/robots.txt',
+  '/sitemap.xml',
+  '/favicon.ico',
+  '/manifest.json',
+  '/api/login',
+  '/api/auth/refresh',
+]);
 
-const PUBLIC_PATHS = ['/auth/login', '/api/login', '/api/auth/refresh'];
+// Métodos sensibles para CSRF (sólo navegación, no APIs)
 const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+// Rutas exentas de CSRF (form login/refresh, etc.)
 const CSRF_EXEMPT_PATHS = new Set(['/api/login', '/api/auth/refresh']);
+
 const isProduction = process.env.NODE_ENV === 'production';
 
-const RBAC_RULES: Array<{ prefix: string; roles: string[] }> = [{ prefix: '/api/usuario', roles: ['admin'] }];
+// ---- helpers ----
 
-const isPublicPath = (pathname: string) => PUBLIC_PATHS.some((publicPath) => pathname.startsWith(publicPath));
+const isPublicPath = (pathname: string) =>
+  Array.from(PUBLIC_PATHS).some((p) => pathname.startsWith(p));
 
-const isAuthorizedForPath = (pathname: string, roles: string[]): boolean => {
-    if (!RBAC_RULES.length) return true;
-    const roleSet = new Set(roles);
-    for (const rule of RBAC_RULES) {
-        if (pathname.startsWith(rule.prefix)) {
-            return rule.roles.some((required) => roleSet.has(required));
-        }
-    }
-    return true;
+/**
+ * Ignora assets no-HTML y TODAS las /api para que las validaciones fuertes
+ * (JWT/CSRF) ocurran en los handlers SSR/API del servidor.
+ */
+const isNonHtmlAssetOrApi = (req: NextRequest) => {
+  const { pathname } = req.nextUrl;
+  if (pathname.startsWith('/api')) return true; // que lo maneje el handler
+  const accept = req.headers.get('accept') || '';
+  const isHtmlNav = accept.includes('text/html');
+  return !isHtmlNav;
 };
 
 const clearAuthCookiesOn = (response: NextResponse) => {
-    response.cookies.set({
-        name: ACCESS_TOKEN_COOKIE_NAME,
-        value: '',
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: 'strict',
-        path: '/',
-        maxAge: 0
-    });
-    response.cookies.set({
-        name: REFRESH_TOKEN_COOKIE_NAME,
-        value: '',
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: 'strict',
-        path: '/',
-        maxAge: 0
-    });
-    response.cookies.set({
-        name: CSRF_COOKIE_NAME,
-        value: '',
-        httpOnly: false,
-        secure: isProduction,
-        sameSite: 'strict',
-        path: '/',
-        maxAge: 0
-    });
+  response.cookies.set({
+    name: ACCESS_TOKEN_COOKIE_NAME,
+    value: '',
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: 0,
+  });
+  response.cookies.set({
+    name: REFRESH_TOKEN_COOKIE_NAME,
+    value: '',
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: 0,
+  });
+  response.cookies.set({
+    name: CSRF_COOKIE_NAME,
+    value: '',
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: 0,
+  });
 };
 
 const enforceCsrfProtection = (request: NextRequest): NextResponse | null => {
-    if (!CSRF_METHODS.has(request.method.toUpperCase())) {
-        return null;
-    }
-    if (CSRF_EXEMPT_PATHS.has(request.nextUrl.pathname)) {
-        return null;
-    }
+  if (!CSRF_METHODS.has(request.method.toUpperCase())) return null;
+  if (CSRF_EXEMPT_PATHS.has(request.nextUrl.pathname)) return null;
 
-    const csrfCookie = request.cookies.get(CSRF_COOKIE_NAME)?.value;
-    const csrfHeader = request.headers.get(CSRF_HEADER_NAME);
-    if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
-        return NextResponse.json({ error: 'CSRF token inválido' }, { status: 403 });
-    }
-    return null;
+  const csrfCookie = request.cookies.get(CSRF_COOKIE_NAME)?.value;
+  const csrfHeader = request.headers.get(CSRF_HEADER_NAME);
+  if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+    return NextResponse.json({ error: 'CSRF token invalido' }, { status: 403 });
+  }
+  return null;
 };
 
 const handleUnauthenticated = (request: NextRequest): NextResponse => {
-    const isApiRoute = request.nextUrl.pathname.startsWith('/api');
-    if (isApiRoute) {
-        const response = NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-        clearAuthCookiesOn(response);
-        return response;
-    }
-    const response = NextResponse.redirect(new URL('/auth/login', request.url));
-    clearAuthCookiesOn(response);
-    return response;
+  const { pathname, search } = request.nextUrl;
+  // Para navegaciones, redirige a login con ?next
+  const url = request.nextUrl.clone();
+  url.pathname = '/auth/login';
+  url.searchParams.set('next', `${pathname}${search || ''}`);
+  const response = NextResponse.redirect(url);
+  clearAuthCookiesOn(response);
+  return response;
 };
 
-const handleForbidden = (request: NextRequest): NextResponse => {
-    if (request.nextUrl.pathname.startsWith('/api')) {
-        return NextResponse.json({ error: 'Prohibido' }, { status: 403 });
-    }
-    return NextResponse.redirect(new URL('/auth/login', request.url));
-};
+// ---- middleware ----
 
 export async function middleware(request: NextRequest) {
-    const { pathname } = request.nextUrl;
+  const { pathname } = request.nextUrl;
 
-    if (isPublicPath(pathname)) {
-        return NextResponse.next();
-    }
+  // 1) Público explícito
+  if (isPublicPath(pathname)) {
+    return NextResponse.next();
+  }
 
-    const csrfResponse = enforceCsrfProtection(request);
-    if (csrfResponse) {
-        return csrfResponse;
-    }
+  // 2) Assets no-HTML y todas las /api (dejar que lo maneje el handler)
+  if (isNonHtmlAssetOrApi(request)) {
+    return NextResponse.next();
+  }
 
-    const token = request.cookies.get(ACCESS_TOKEN_COOKIE_NAME)?.value;
-    if (!token) {
-        return handleUnauthenticated(request);
-    }
+  // 3) CSRF (solo navegaciones/métodos mutantes, no /api)
+  const csrfResponse = enforceCsrfProtection(request);
+  if (csrfResponse) return csrfResponse;
 
-    try {
-        const { payload } = await verifyAccessTokenJwt(token);
-        const sessionId = typeof payload.sid === 'string' ? payload.sid : null;
-        const userId = typeof payload.sub === 'string' ? payload.sub : null;
+  // 4) Gate básico por cookie: requiere access_token
+  const hasAccess = Boolean(request.cookies.get(ACCESS_TOKEN_COOKIE_NAME)?.value);
+  if (!hasAccess) {
+    return handleUnauthenticated(request);
+  }
 
-        if (!sessionId || !userId) {
-            throw new Error('ACCESS_TOKEN_PAYLOAD_INVALID');
-        }
-
-        const roles = Array.isArray(payload.roles) ? payload.roles.filter((role): role is string => typeof role === 'string') : [];
-
-        if (!isAuthorizedForPath(pathname, roles)) {
-            return handleForbidden(request);
-        }
-
-        const requestHeaders = new Headers(request.headers);
-        requestHeaders.set('x-session-id', sessionId);
-        requestHeaders.set('x-user-id', userId);
-        requestHeaders.set('x-user-roles', roles.join(','));
-
-        return NextResponse.next({
-            request: {
-                headers: requestHeaders
-            }
-        });
-    } catch (error) {
-        console.warn('[MIDDLEWARE_AUTH_ERROR]', error);
-        return handleUnauthenticated(request);
-    }
+  // 5) Continuar (verificación JWT/roles queda en SSR/API)
+  return NextResponse.next();
 }
 
+// ---- matcher ----
+// Protege todo excepto assets estáticos, temas/demos públicos, rutas de auth y todas las /api
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.json|themes/|auth/login|api/login|api/auth/refresh).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml|manifest\\.json|themes/|demo/|auth/|api/).*)',
   ],
 };
-

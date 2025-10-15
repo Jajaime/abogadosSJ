@@ -40,7 +40,7 @@ const toResponsePayload = (demanda: any) => ({
   demandadoSols: Array.isArray(demanda.demandadoSolidario)
     ? demanda.demandadoSolidario.map((d: any) => ({
         id: d.id,
-        nombre: d.nombreRazonSocial,
+        nombreRazonSocial: d.nombreRazonSocial,
         rut: d.rut,
         domicilio: d.domicilio,
         representanteLegal: d.representanteLegal,
@@ -168,7 +168,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
           await tx.demandadoSolidario.createMany({
             data: data.demandadoSols.map((d: any) => ({
               demandaId: id,
-              nombreRazonSocial: strFrom(d?.nombre),
+              nombreRazonSocial: strFrom(d?.nombreRazonSocial),
               rut: strFrom(d?.rut),
               domicilio: strFrom(d?.domicilio),
               representanteLegal: strFrom(d?.representanteLegal),
