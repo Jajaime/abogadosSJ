@@ -75,29 +75,35 @@ export default [
   },
 
   // TS/TSX (type-aware)
-  {
-    files: ['**/*.{ts,tsx}'],
-    languageOptions: {
-      parser: tsParser,
-      parserOptions: { project: './tsconfig.eslint.json' }
-    },
-    plugins: { '@typescript-eslint': tsPlugin },
-    rules: {
-      '@typescript-eslint/no-unused-vars': [
-        'warn',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
-      ],
-      '@typescript-eslint/consistent-type-imports': 'warn',
-      '@typescript-eslint/no-explicit-any': 'off',
-      'no-control-regex': 'off'
-    }
+ {
+  files: ['**/*.{ts,tsx}'],
+  languageOptions: {
+    parser: tsParser,
+    parserOptions: { project: './tsconfig.eslint.json' }
   },
+  plugins: { '@typescript-eslint': tsPlugin },
+  rules: {
+    // 🔴 apaga la base y usa solo la de TS:
+    'no-unused-vars': 'off',
+    '@typescript-eslint/no-unused-vars': [
+      'warn',
+      { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
+    ],
+    '@typescript-eslint/consistent-type-imports': 'warn',
+    '@typescript-eslint/no-explicit-any': 'off',
+    // por falsos positivos
+    'no-control-regex': 'off',
+    // por si algún preset volvió a encenderlo:
+    'no-undef': 'off'
+  }
+},
 
   // Declaraciones
   {
     files: ['**/*.d.ts'],
     rules: {
       'no-undef': 'off',
+      'no-redeclare': 'off',
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': 'off'
     }

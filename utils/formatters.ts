@@ -42,12 +42,12 @@ export type ListaNaturalOpts = {
 };
 
 function _cleanItem(s: string) {
-  // recorta, colapsa espacios internos y elimina puntuación final suelta
   return s
     .trim()
     .replace(/\s+/g, ' ')
-    .replace(/[,\.;:\s]+$/g, '');
+    .replace(/[,.;:\s]+$/g, ''); // ← sin el backslash delante del punto
 }
+
 
 export function listaNatural(
   items?: Array<string | null | undefined>,
