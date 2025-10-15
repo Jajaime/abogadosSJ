@@ -1,6 +1,7 @@
 'use client';
 import { useRouter, useSearchParams } from 'next/navigation';
-import React, { FormEvent, useContext, useMemo, useRef, useState } from 'react';
+import type { FormEvent} from 'react';
+import React, { useContext, useMemo, useRef, useState } from 'react';
 import { apiFetch } from '@/utils/apiClient';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
@@ -78,7 +79,7 @@ const LoginPage = () => {
   // Muestra el motivo si vino con ?code=...
   React.useEffect(() => {
     if (welcomeMsg) showInfoMessage(welcomeMsg);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [welcomeMsg]);
 
   return (

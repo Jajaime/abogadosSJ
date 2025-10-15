@@ -20,7 +20,6 @@ import { MultiSelect } from 'primereact/multiselect';
 // imports nuevos
 import { useRut } from '@/hooks/useRut';
 import { apiFetch } from '@/utils/apiClient';
-import { ValidatedInputText, ValidatedDropdown, ValidatedCalendar, ValidatedInputNumber } from '@/components/Validated';
 
 import type { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
 

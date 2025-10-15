@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element */
+ 
 'use client';
 
 import { apiFetch } from '@/utils/apiClient';
@@ -126,7 +126,7 @@ export default function UsuariosPage() {
         try {
             // Si no tienes endpoint batch, elimina uno por uno
             for (const u of selectedUsuarios) {
-                // eslint-disable-next-line no-await-in-loop
+                 
                 const res = await apiFetch(`/api/usuario/${u.id}`, { method: 'DELETE' });
                 if (!res.ok) throw new Error(`No se pudo eliminar id=${u.id}`);
             }

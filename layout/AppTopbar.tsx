@@ -1,11 +1,11 @@
-/* eslint-disable @next/next/no-img-element */
+ 
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { classNames } from 'primereact/utils';
 import React, { forwardRef, useContext, useImperativeHandle, useRef } from 'react';
 import { apiFetch } from '@/utils/apiClient';
-import { AppTopbarRef } from '@/types';
+import type { AppTopbarRef } from '@/types';
 import { LayoutContext } from './context/layoutcontext';
 
 const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {

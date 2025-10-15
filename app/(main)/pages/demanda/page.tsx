@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element */
+ 
 'use client';
 
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
@@ -194,7 +194,7 @@ export default function DemandasPage() {
         if (!selectedDemandas || selectedDemandas.length === 0) return;
         try {
             for (const d of selectedDemandas) {
-                // eslint-disable-next-line no-await-in-loop
+                 
                 const res = await apiFetch(`/api/demandas/${d.id}`, { method: 'DELETE' });
                 if (!res.ok) throw new Error(`No se pudo eliminar id=${d.id}`);
             }

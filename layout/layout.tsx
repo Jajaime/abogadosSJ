@@ -11,7 +11,7 @@ import AppTopbar from './AppTopbar';
 import AppConfig from './AppConfig';
 import { LayoutContext } from './context/layoutcontext';
 import { PrimeReactContext } from 'primereact/api';
-import { ChildContainerProps, LayoutState, AppTopbarRef } from '@/types';
+import type { ChildContainerProps, LayoutState, AppTopbarRef } from '@/types';
 
 // ⬇️ NUEVO: guard de cliente
 import AuthGate from '@/components/AuthGate';

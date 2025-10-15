@@ -1,5 +1,5 @@
 'use client';
-/* eslint-disable @next/next/no-img-element */
+ 
 import React, { useContext, useRef, useState } from 'react';
 import Link from 'next/link';
 
@@ -8,7 +8,7 @@ import { Button } from 'primereact/button';
 import { Ripple } from 'primereact/ripple';
 import { Divider } from 'primereact/divider';
 import { LayoutContext } from '../../../layout/context/layoutcontext';
-import { NodeRef } from '@/types';
+import type { NodeRef } from '@/types';
 import { classNames } from 'primereact/utils';
 
 const LandingPage = () => {

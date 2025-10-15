@@ -20,7 +20,6 @@ import {
     ACCESS_TOKEN_COOKIE_NAME,
     REFRESH_TOKEN_COOKIE_NAME,
     CSRF_COOKIE_NAME,
-    CSRF_HEADER_NAME,
 } from '@/lib/jwt-public';
 
 const isProduction = process.env.NODE_ENV === 'production';

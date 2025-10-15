@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element */
+ 
 'use client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useMemo } from 'react';

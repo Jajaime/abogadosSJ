@@ -11,7 +11,6 @@ import { safeSerializeDemanda, safeSerializeDemandados } from '@/utils/serialize
 import { decorateDemandaForDocx, decorateDemandadoSolidarioForDocx } from '@/utils/decorateDemanda';
 import { formatFechaLargaDate } from '@/utils/formatters';
 import { prisma } from '@/lib/prisma';
-import { findDemandaForUser } from '@/lib/demanda';
 import { requireSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';

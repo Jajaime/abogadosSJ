@@ -3,10 +3,14 @@
 
 import React from 'react';
 import { classNames } from 'primereact/utils';
-import { InputText, InputTextProps } from 'primereact/inputtext';
-import { Dropdown, DropdownProps } from 'primereact/dropdown';
-import { InputNumber, InputNumberProps } from 'primereact/inputnumber';
-import { Calendar, CalendarProps } from 'primereact/calendar';
+import type { InputTextProps } from 'primereact/inputtext';
+import { InputText } from 'primereact/inputtext';
+import type { DropdownProps } from 'primereact/dropdown';
+import { Dropdown } from 'primereact/dropdown';
+import type { InputNumberProps } from 'primereact/inputnumber';
+import { InputNumber } from 'primereact/inputnumber';
+import type { CalendarProps } from 'primereact/calendar';
+import { Calendar } from 'primereact/calendar';
 
 type BaseProps = {
   label: string;

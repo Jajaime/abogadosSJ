@@ -1,5 +1,5 @@
-import React, { ReactNode } from 'react';
-import {
+import type { ReactNode } from 'react';
+import type {
     Page,
     AppBreadcrumbProps,
     Breadcrumb,
@@ -8,7 +8,6 @@ import {
     MenuModel,
     LayoutConfig,
     LayoutState,
-    AppBreadcrumbState,
     Breadcrumb,
     LayoutContextProps,
     MailContextProps,
@@ -18,12 +17,12 @@ import {
     AppConfigProps,
     NodeRef,
     AppTopbarRef,
-    MenuModelItem,
     AppMenuItemProps,
     AppMenuItem
 } from './layout';
 
-import { DemandadoSolDTO, DemandaDTO } from './demanda';
+
+
 
 type ChildContainerProps = {
     children: ReactNode;

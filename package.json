@@ -12,15 +12,17 @@
     "prisma:studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
     "format": "prettier --write \"{app,demo,layout,types}/**/*.{js,ts,tsx,d.ts}\"",
-    "lint": "next lint",
+    "lint": "eslint \"{app,components,hooks,layout,lib,utils,prisma,types}/**/*.{ts,tsx,js,jsx}\"",
     "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.16.1",
     "@types/react": "18.2.12",
     "@types/react-dom": "18.2.5",
+    "bcryptjs": "^2.4.3",
     "chart.js": "4.2.1",
     "docx-templates": "^4.14.1",
+    "jose": "^5.2.4",
     "next": "^15.2.4",
     "postcss": "^8.5.3",
     "primeflex": "^3.3.1",
@@ -28,20 +30,27 @@
     "primereact": "10.2.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "zod": "^3.24.2",
-    "bcryptjs": "^2.4.3",
-    "jose": "^5.2.4"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.37.0",
+    "@next/eslint-plugin-next": "^15.5.5",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^24.3.0",
-    "eslint": "8.43.0",
-    "eslint-config-next": "13.4.6",
+    "@typescript-eslint/eslint-plugin": "^8.46.1",
+    "@typescript-eslint/parser": "^8.46.1",
+    "eslint": "^9.37.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-unused-imports": "^4.2.0",
     "prettier": "^2.8.8",
     "prisma": "^6.16.1",
     "sass": "^1.63.4",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
-    "@types/bcryptjs": "^2.4.6"
+    "typescript-eslint": "^8.46.1"
   }
 }
