@@ -45,9 +45,9 @@ export interface DemandaDTO {
     remuneracion: number | null;
     formaPago: string;
     liquidacionSueldo: boolean;
-    cotizacionSalud: string;
-    cotizacionAfp: string;
-    cotizacionAfc: string;
+    cotizacionSalud: string[];
+    cotizacionAfp: string[];
+    cotizacionAfc: string[];
     vacaciones: number | null;
     fuero: string;
 

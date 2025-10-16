@@ -23,9 +23,9 @@ export interface DemandaPersistenceData {
   remuneracion: number | null;
   formaPago: string;
   liquidacionSueldo: boolean;
-  cotizacionSalud: string;
-  cotizacionAfp: string;
-  cotizacionAfc: string;
+  cotizacionSalud: string[];
+  cotizacionAfp: string[];
+  cotizacionAfc: string[];
   vacaciones: number | null;
   fuero: string;
   fechaTerminoRelaLaboral: Date | null;
@@ -268,9 +268,18 @@ export const demandaPayloadSchema = z
     remuneracion: optionalPositiveNumber('remuneracion'),
     formaPago: requiredString('formaPago', 120),
     liquidacionSueldo: booleanField('liquidacionSueldo'),
-    cotizacionSalud: requiredString('cotizacionSalud', 120),
-    cotizacionAfp: requiredString('cotizacionAfp', 120),
-    cotizacionAfc: requiredString('cotizacionAfc', 120),
+    cotizacionSalud: z.union([
+      stringArray('cotizacionSalud', { maxItems: 50 }),
+      z.undefined(),
+    ]).transform((value) => value ?? []),
+    cotizacionAfp: z.union([
+      stringArray('cotizacionAfp', { maxItems: 50 }),
+      z.undefined(),
+    ]).transform((value) => value ?? []),
+    cotizacionAfc: z.union([
+      stringArray('cotizacionAfc', { maxItems: 50 }),
+      z.undefined(),
+    ]).transform((value) => value ?? []),
     vacaciones: optionalPositiveNumber('vacaciones', { max: 365 }),
     fuero: requiredString('fuero', 120),
 

@@ -22,6 +22,7 @@ import { useRut } from '@/hooks/useRut';
 import { apiFetch } from '@/utils/apiClient';
 
 import type { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
+import MesAnoSelector from '@/components/MesAnoSelector';
 
 type DropdownItem = { name: string; code: string };
 
@@ -112,9 +113,9 @@ const DemandaForm: React.FC = () => {
     remuneracion: null,
     formaPago: '',
     liquidacionSueldo: false,
-    cotizacionSalud: '', // <-- string para ser consistente con dropdowns
-    cotizacionAfp: '',
-    cotizacionAfc: '',
+    cotizacionSalud: [] as string[], // ahora es string[] (YYYY-MM)
+    cotizacionAfp: [] as string[],
+    cotizacionAfc: [] as string[],
     vacaciones: null,
     fuero: '',
 
@@ -131,6 +132,12 @@ const DemandaForm: React.FC = () => {
     materias: [],
     createdAt: '',
   });
+
+  // 👇 añade setField y years (nuevo)
+  const setField = (name: keyof typeof formData, val: any) =>
+    setFormData((prev) => ({ ...prev, [name]: val }));
+
+  const years = [2024, 2025, 2026]; // ajusta a tu caso
 
   // ===================== Opciones de dropdowns =====================
   const dropdownItemsMateria: DropdownItem[] = useMemo(
@@ -364,9 +371,10 @@ const DemandaForm: React.FC = () => {
           fechaNacimiento: data.fechaNacimiento || '',
           fechaInicioRelacionLaboral: data.fechaInicioRelacionLaboral || '',
           fechaTerminoRelaLaboral: data.fechaTerminoRelaLaboral || '',
-          cotizacionSalud: (data as any).cotizacionSalud ?? '',
-          cotizacionAfp: (data as any).cotizacionAfp ?? '',
-          cotizacionAfc: (data as any).cotizacionAfc ?? '',
+          // 👇 asegura que sean arrays de YYYY-MM
+          cotizacionSalud: Array.isArray((data as any).cotizacionSalud) ? (data as any).cotizacionSalud : [],
+          cotizacionAfp:   Array.isArray((data as any).cotizacionAfp)   ? (data as any).cotizacionAfp   : [],
+          cotizacionAfc:   Array.isArray((data as any).cotizacionAfc)   ? (data as any).cotizacionAfc   : [],
         });
       } catch (e: any) {
         toast.current?.show({ severity: 'error', summary: 'Error', detail: e?.message || 'No se pudo cargar', life: 5000 });
@@ -417,8 +425,6 @@ const DemandaForm: React.FC = () => {
       setFormData((prev) => ({ ...prev, anosServicios: false, mesAviso: false }));
     }
   }, [formData.tipoDespido, formData.despidoDisciplinario, formData.otroDespidoDisciplinario, radioValueAnosServicio, radioValueMesAviso]);
-
-
 
   // ===================== Handlers =====================
   const handleChange = (
@@ -479,7 +485,6 @@ const DemandaForm: React.FC = () => {
     });
   };
 
-
   const resetAll = () => {
     setFormData((prev) => ({
       ...prev,
@@ -512,9 +517,9 @@ const DemandaForm: React.FC = () => {
       remuneracion: null,
       formaPago: '',
       liquidacionSueldo: false,
-      cotizacionSalud: '',
-      cotizacionAfp: '',
-      cotizacionAfc: '',
+      cotizacionSalud: [],
+      cotizacionAfp: [],
+      cotizacionAfc: [],
       vacaciones: null,
       fuero: '',
       // término
@@ -544,7 +549,7 @@ const DemandaForm: React.FC = () => {
     e.preventDefault();
     setSubmitted(true);
 
-    // --- VALIDACIÓN CONDICIONAL (reemplaza tu if gigante por este bloque)
+    // --- VALIDACIÓN CONDICIONAL (se mantiene igual)
     const missing: string[] = [];
 
     // helper corto
@@ -622,19 +627,17 @@ const DemandaForm: React.FC = () => {
 
     // Si hay faltantes, los mostramos y salimos
     if (missing.length) {
-  setMissingFields(missing); // 👉 guarda faltantes
-  toast.current?.show({
-    severity: 'warn',
-    summary: 'Validación',
-    detail: `Faltan: ${missing.join(' · ')}`,
-    life: 5000,
-  });
-  return;
-} else {
-  setMissingFields([]); // limpia si no hay errores
-}
-
-    // const requireSolidario = demandadoSols.length === 0 ... (si lo quieres, descomenta)
+      setMissingFields(missing);
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Validación',
+        detail: `Faltan: ${missing.join(' · ')}`,
+        life: 5000,
+      });
+      return;
+    } else {
+      setMissingFields([]);
+    }
 
     const prestacionesNombres = dropdownItemPrestacionesAdeudada.map((i) => i.name);
     const materiasNombres = generatedButtons.map((b) => b.name);
@@ -1173,50 +1176,37 @@ const DemandaForm: React.FC = () => {
               </div>
             </div>
 
-            <div className="field col-12 md:col-4">
-              <label htmlFor="cotizacionSalud">Cotizaciones de Salud</label>
-              <Dropdown
-                id="cotizacionSalud"
+            {/* ====== NUEVOS SELECTORES DE MESES/AÑO ====== */}
+            <div className="field col-12">
+              <label className="mb-2 block">Cotizaciones de Salud (meses impagos)</label>
+              <MesAnoSelector
+                label="Cotizaciones de Salud (meses impagos)"
                 value={formData.cotizacionSalud}
-                onChange={(e) => handleChange({ target: { name: 'cotizacionSalud', value: e.value } })}
-                options={dropdownItemsCotizacionMeses}
-                optionLabel="name"
-                optionValue="name"
-                tooltip="Estado de cotizaciones Fonasa o Isapre (pagadas o no pagadas)"
-                tooltipOptions={{ position: 'bottom' }}
-                placeholder="Seleccione"
+                onChange={(v: string[]) => setField('cotizacionSalud', v)}
+                years={years}
               />
             </div>
 
-            <div className="field col-12 md:col-4">
-              <label htmlFor="cotizacionAfp">Cotizaciones AFP</label>
-              <Dropdown
-                id="cotizacionAfp"
+            <div className="field col-12">
+              <label className="mb-2 block">Cotizaciones AFP (meses impagos)</label>
+              <MesAnoSelector
+                label="Cotizaciones AFP (meses impagos)"
                 value={formData.cotizacionAfp}
-                onChange={(e) => handleChange({ target: { name: 'cotizacionAfp', value: e.value } })}
-                options={dropdownItemsCotizacionMeses}
-                optionLabel="name"
-                optionValue="name"
-                tooltip="Estado de cotizaciones AFP"
-                tooltipOptions={{ position: 'bottom' }}
-                placeholder="Seleccione"
+                onChange={(v: string[]) => setField('cotizacionAfp', v)}
+                years={years}
               />
             </div>
 
-            <div className="field col-12 md:col-4">
-              <label htmlFor="cotizacionAfc">Cotizaciones AFC</label>
-              <Dropdown
-                id="cotizacionAfc"
+            <div className="field col-12">
+              <label className="mb-2 block">Cotizaciones AFC (meses impagos)</label>
+              <MesAnoSelector
+                label="Cotizaciones AFC (meses impagos)"
                 value={formData.cotizacionAfc}
-                onChange={(e) => handleChange({ target: { name: 'cotizacionAfc', value: e.value } })}
-                options={dropdownItemsCotizacionMeses}
-                optionLabel="name"
-                optionValue="name"
-                tooltip="Estado de cotizaciones Seguro Cesantía AFC"
-                tooltipOptions={{ position: 'bottom' }}
-                placeholder="Seleccione"
+                onChange={(v: string[]) => setField('cotizacionAfc', v)}
+                years={years}
               />
             </div>
+            {/* ====== /NUEVOS SELECTORES ====== */}
 
             <div className="field col-12 md:col-4">
               <label htmlFor="vacaciones">Vacaciones</label>
