@@ -7,8 +7,8 @@ interface AppLayoutProps {
 }
 
 export const metadata: Metadata = {
-    title: 'Abogados Ss&Cía',
-    description: 'The ultimate collection of design-agnostic, flexible and accessible React UI Components.',
+    title: 'Ss&Cía-Abogados',
+    description: 'Agencia juridica que ofrece servicios legales de alta calidad.',
     robots: { index: false, follow: false },
     openGraph: {
         type: 'website',

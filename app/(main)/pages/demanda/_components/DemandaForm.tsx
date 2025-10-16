@@ -1358,6 +1358,7 @@ const DemandaForm: React.FC = () => {
                 placeholder="Seleccione"
                 maxSelectedLabels={3}
                 className="w-full md:w-20rem"
+                selectedItemsLabel='{0} elementos seleccionados'
               />
             </div>
           </div>

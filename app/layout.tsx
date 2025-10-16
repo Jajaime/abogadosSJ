@@ -77,6 +77,9 @@ addLocale('es', {
     medium: 'Medio',
     strong: 'Fuerte',
     passwordPrompt: 'Ingrese una contraseña',
+    emptyFilterMessage: 'No se encontraron resultados',
+    selectionMessage: '{0} elementos seleccionados', // For MultiSelect
+    emptyMessage: 'No hay opciones disponibles', // For MultiSelect dropdown
   });
   
   // Establecer 'es' como configuración regional predeterminada
