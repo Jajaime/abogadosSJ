@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from 'primereact/button';
@@ -12,11 +12,11 @@ type Props = {
   value: string[];
   /** Emisor de cambios */
   onChange: (v: string[]) => void;
-  /** Años visibles. Si no se provee, el componente calcula dinámicamente un set inicial. */
+  /** AÃ±os visibles. Si no se provee, el componente calcula dinÃ¡micamente un set inicial. */
   years?: number[];
-  /** Límite inferior/superior permitido al agregar años en el modal (opcionales, defaults sensatos) */
+  /** LÃ­mite inferior/superior permitido al agregar aÃ±os en el modal (opcionales, defaults sensatos) */
   minYearAllowed?: number; // default 1970
-  maxYearAllowed?: number; // default año actual + 1
+  maxYearAllowed?: number; // default aÃ±o actual + 1
 };
 
 const mesesES = [
@@ -27,7 +27,7 @@ const mesesES = [
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const sortYYYYMM = (arr: string[]) => [...arr].sort((a, b) => a.localeCompare(b));
 
-/** Deriva años desde 'YYYY-MM' */
+/** Deriva aÃ±os desde 'YYYY-MM' */
 const yearsFromValue = (v: string[]) => {
   const years = new Set<number>();
   for (const k of v) {
@@ -37,7 +37,7 @@ const yearsFromValue = (v: string[]) => {
   return years;
 };
 
-/** Rango compacto: currentYear..(currentYear-4) + años existentes en 'value' */
+/** Rango compacto: currentYear..(currentYear-4) + aÃ±os existentes en 'value' */
 const buildDefaultYears = (value: string[], explicitYears?: number[]) => {
   if (explicitYears && explicitYears.length) {
     return Array.from(new Set(explicitYears)).sort((a, b) => a - b);
@@ -59,22 +59,22 @@ const MesAnoSelector: React.FC<Props> = ({
 }) => {
   const _max = maxYearAllowed ?? new Date().getFullYear() + 1;
 
-  // Estado local de años visibles (derivado de props.value y/o props.years)
+  // Estado local de aÃ±os visibles (derivado de props.value y/o props.years)
   const [yearsLocal, setYearsLocal] = useState<number[]>(() =>
     buildDefaultYears(value, years)
   );
 
-  // Si cambian value o years explícitos, re-derivamos inteligentemente
+  // Si cambian value o years explÃ­citos, re-derivamos inteligentemente
   useEffect(() => {
     setYearsLocal((prev) => {
       const target = new Set<number>(buildDefaultYears(value, years));
-      // preserva años ya agregados por el usuario también
+      // preserva aÃ±os ya agregados por el usuario tambiÃ©n
       for (const y of prev) target.add(y);
       return Array.from(target).sort((a, b) => a - b);
     });
   }, [value, years]);
 
-  // Modal para gestionar años
+  // Modal para gestionar aÃ±os
   const [manageOpen, setManageOpen] = useState(false);
   const [yearFrom, setYearFrom] = useState<number | null>(null);
   const [yearTo, setYearTo] = useState<number | null>(null);
@@ -101,11 +101,11 @@ const MesAnoSelector: React.FC<Props> = ({
     const yf = yearFrom ?? yearTo ?? null;
     const yt = yearTo ?? yearFrom ?? null;
     if (yf === null || yt === null) {
-      setError('Ingresa al menos un año (o un rango).');
+      setError('Ingresa al menos un aÃ±o (o un rango).');
       return;
     }
     if (yf < minYearAllowed || yt < minYearAllowed || yf > _max || yt > _max) {
-      setError(`Rango fuera de límites (${minYearAllowed}–${_max}).`);
+      setError(`Rango fuera de lÃ­mites (${minYearAllowed}â€“${_max}).`);
       return;
     }
     const a = Math.min(yf, yt);
@@ -113,7 +113,7 @@ const MesAnoSelector: React.FC<Props> = ({
     const next = new Set(yearsLocal);
     for (let y = a; y <= b; y++) next.add(y);
     setYearsLocal(Array.from(next).sort((x, y) => x - y));
-    // no tocamos selection; solo agregamos visibilidad de años
+    // no tocamos selection; solo agregamos visibilidad de aÃ±os
     setYearFrom(null);
     setYearTo(null);
   };
@@ -121,7 +121,7 @@ const MesAnoSelector: React.FC<Props> = ({
   const footer = (
     <div className="flex justify-end gap-2">
       <Button label="Cerrar" onClick={() => setManageOpen(false)} text />
-      <Button label="Agregar años" icon="pi pi-plus" onClick={addYearsRange} />
+      <Button label="Agregar aÃ±os" icon="pi pi-plus" onClick={addYearsRange} />
     </div>
   );
 
@@ -137,7 +137,7 @@ const MesAnoSelector: React.FC<Props> = ({
             type="button"
             className="p-button-text p-button-sm"
             icon="pi pi-calendar-plus"
-            label="Gestionar años"
+            label="Gestionar aÃ±os"
             onClick={() => setManageOpen(true)}
           />
           {value.length > 0 && (
@@ -151,7 +151,7 @@ const MesAnoSelector: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Grillas de meses por año */}
+      {/* Grillas de meses por aÃ±o */}
       <div className="flex flex-col gap-3">
         {yearsLocal.map((yyyy) => (
           <div key={yyyy} className="border-round surface-border surface-card p-3">
@@ -198,16 +198,16 @@ const MesAnoSelector: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Modal para gestionar años */}
+      {/* Modal para gestionar aÃ±os */}
       <Dialog
-        header="Gestionar años visibles"
+        header="Gestionar aÃ±os visibles"
         visible={manageOpen}
         style={{ width: '480px' }}
         onHide={() => setManageOpen(false)}
         footer={footer}
       >
         <p className="mb-3">
-          Agrega un <strong>año</strong> o un <strong>rango de años</strong> para mostrar en el selector.
+          Agrega un <strong>aÃ±o</strong> o un <strong>rango de aÃ±os</strong> para mostrar en el selector.
         </p>
 
         <div className="grid">
@@ -240,7 +240,7 @@ const MesAnoSelector: React.FC<Props> = ({
         {error && <small className="p-error mt-2 block">{error}</small>}
 
         <div className="mt-4">
-          <div className="mb-2">Años visibles:</div>
+          <div className="mb-2">AÃ±os visibles:</div>
           <div className="flex flex-wrap gap-2">
             {yearsLocal.map((y) => (
               <span key={y} className="px-2 py-1 border-round surface-200 text-color text-sm">
@@ -249,7 +249,7 @@ const MesAnoSelector: React.FC<Props> = ({
             ))}
           </div>
           <small className="block mt-2 text-color-secondary">
-            Límite: {minYearAllowed}–{_max}. No se eliminan años existentes; solo se agregan a la vista.
+            LÃ­mite: {minYearAllowed}â€“{_max}. No se eliminan aÃ±os existentes; solo se agregan a la vista.
           </small>
         </div>
       </Dialog>
@@ -258,3 +258,4 @@ const MesAnoSelector: React.FC<Props> = ({
 };
 
 export default MesAnoSelector;
+

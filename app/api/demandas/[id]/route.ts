@@ -139,9 +139,9 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     setIfNumber('remuneracion', data.remuneracion);
     setIfString('formaPago', data.formaPago);
     setIfBool('liquidacionSueldo', data.liquidacionSueldo);
-    setIfString('cotizacionSalud', data.cotizacionSalud);
-    setIfString('cotizacionAfp', data.cotizacionAfp);
-    setIfString('cotizacionAfc', data.cotizacionAfc);
+    setIfStringArray('cotizacionSalud', data.cotizacionSalud);
+    setIfStringArray('cotizacionAfp', data.cotizacionAfp);
+    setIfStringArray('cotizacionAfc', data.cotizacionAfc);
     setIfNumber('vacaciones', data.vacaciones);
     setIfString('fuero', data.fuero);
 

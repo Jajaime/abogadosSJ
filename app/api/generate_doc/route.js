@@ -445,6 +445,17 @@ function buildClausulas(d) {
   }
 }
 
+/**
+ * @param {{ nombre_upper: string, rut_fmt: string }[]} demandadoSolidariosFmt
+ */
+function solidariosInline(demandadoSolidariosFmt = []) {
+  const items = demandadoSolidariosFmt.map(d => `${d.nombre_upper}, RUT: ${d.rut_fmt}`);
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0];
+  return items.slice(0, -1).join(', ') + ' y ' + items[items.length - 1];
+}
+
+
 function cleanup(list) {
   return list
     .map((s) => (typeof s === 'string' ? s.replace(/\s+/g, ' ').trim() : ''))
@@ -495,9 +506,9 @@ const demandaSchema = z
     remuneracion: z.union([z.number(), z.string()]).optional(),
     formaPago: z.string().trim().optional(),
     liquidacionSueldo: z.boolean().optional(),
-    cotizacionSalud: z.string().trim().optional(),
-    cotizacionAfp: z.string().trim().optional(),
-    cotizacionAfc: z.string().trim().optional(),
+    cotizacionSalud: z.array(z.string().trim()).optional(),
+    cotizacionAfp: z.array(z.string().trim()).optional(),
+    cotizacionAfc: z.array(z.string().trim()).optional(),
     vacaciones: z.union([z.number(), z.string()]).optional(),
     fuero: z.string().trim().optional(),
     fechaTerminoRelaLaboral: z.union([z.string(), z.date()]).optional(),
@@ -692,6 +703,7 @@ export async function POST(request) {
       demandadoSolidarios: demandadosSerializados, // crudo
       demandaFmt,                                  // formateado
       demandadoSolidariosFmt,                      // formateado
+      solidarios_inline: solidariosInline(demandadoSolidariosFmt),
       hasDemandadoSolidarios,
       clausulas,                                   // <<< arreglo de párrafos (una sola cláusula)
       ...flags,                                    // <<< booleanos por si quieres IFs en la plantilla

@@ -17,12 +17,14 @@ import { Column } from 'primereact/column';
 import { RadioButton } from 'primereact/radiobutton';
 import { InputNumber } from 'primereact/inputnumber';
 import { MultiSelect } from 'primereact/multiselect';
+import { Divider } from 'primereact/divider';
 // imports nuevos
 import { useRut } from '@/hooks/useRut';
 import { apiFetch } from '@/utils/apiClient';
 
 import type { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
 import MesAnoSelector from '@/components/MesAnoSelector';
+import GestionarMesesAnos from '@/components/GestionarMesesAnos';
 
 type DropdownItem = { name: string; code: string };
 
@@ -133,11 +135,14 @@ const DemandaForm: React.FC = () => {
     createdAt: '',
   });
 
-  // 👇 añade setField y years (nuevo)
+  // Helper to update form fields
   const setField = (name: keyof typeof formData, val: any) =>
     setFormData((prev) => ({ ...prev, [name]: val }));
 
-  const years = [2024, 2025, 2026]; // ajusta a tu caso
+  const yearsBackLimit = 10;
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
+  const minSelectableYear = currentYear - yearsBackLimit;
+  const defaultCotizacionPastYears = yearsBackLimit + 1;
 
   // ===================== Opciones de dropdowns =====================
   const dropdownItemsMateria: DropdownItem[] = useMemo(
@@ -373,8 +378,8 @@ const DemandaForm: React.FC = () => {
           fechaTerminoRelaLaboral: data.fechaTerminoRelaLaboral || '',
           // 👇 asegura que sean arrays de YYYY-MM
           cotizacionSalud: Array.isArray((data as any).cotizacionSalud) ? (data as any).cotizacionSalud : [],
-          cotizacionAfp:   Array.isArray((data as any).cotizacionAfp)   ? (data as any).cotizacionAfp   : [],
-          cotizacionAfc:   Array.isArray((data as any).cotizacionAfc)   ? (data as any).cotizacionAfc   : [],
+          cotizacionAfp: Array.isArray((data as any).cotizacionAfp) ? (data as any).cotizacionAfp : [],
+          cotizacionAfc: Array.isArray((data as any).cotizacionAfc) ? (data as any).cotizacionAfc : [],
         });
       } catch (e: any) {
         toast.current?.show({ severity: 'error', summary: 'Error', detail: e?.message || 'No se pudo cargar', life: 5000 });
@@ -413,7 +418,7 @@ const DemandaForm: React.FC = () => {
       setRadioValueAnosServicio(null);
       setRadioValueMesAviso(null);
     }
-  }, [formData.motivoTermino,formData.tipoDespido, formData.despidoDisciplinario, formData.otroDespidoDisciplinario]);
+  }, [formData.motivoTermino, formData.tipoDespido, formData.despidoDisciplinario, formData.otroDespidoDisciplinario]);
 
   useEffect(() => {
     if (formData.tipoDespido !== 'Disciplinario' && (formData.despidoDisciplinario || formData.otroDespidoDisciplinario)) {
@@ -831,10 +836,10 @@ const DemandaForm: React.FC = () => {
                 <label htmlFor="apPaterno">Apellido Paterno</label>
                 <InputText
                   id="apPaterno"
-                  value={formData.apPaterno} 
-                  onChange={(e) => handleChange({ target: { name: 'apPaterno', value: e.target.value } })} 
+                  value={formData.apPaterno}
+                  onChange={(e) => handleChange({ target: { name: 'apPaterno', value: e.target.value } })}
                   placeholder="Ingrese apellido paterno"
-                  className={classNames({ 'p-invalid': missingFields.includes('Apellido paterno') })} 
+                  className={classNames({ 'p-invalid': missingFields.includes('Apellido paterno') })}
                 />
                 {missingFields.includes('Apellido paterno') && <small className="p-invalid">Apellido Paterno es requerido.</small>}
               </div>
@@ -842,10 +847,10 @@ const DemandaForm: React.FC = () => {
               <div className="field col-12 md:col-4">
                 <label htmlFor="apMaterno">Apellido Materno</label>
                 <InputText
-                 id="apMaterno" 
-                 value={formData.apMaterno} 
-                 onChange={(e) => handleChange({ target: { name: 'apMaterno', value: e.target.value } })} 
-                 placeholder="Ingrese apellido materno" />
+                  id="apMaterno"
+                  value={formData.apMaterno}
+                  onChange={(e) => handleChange({ target: { name: 'apMaterno', value: e.target.value } })}
+                  placeholder="Ingrese apellido materno" />
               </div>
 
               <div className="field col-12 md:col-4">
@@ -985,13 +990,16 @@ const DemandaForm: React.FC = () => {
             modal
             className="p-fluid"
             onHide={hideDialog}
+            headerClassName="text-white"
+            headerStyle={{ background: '#024F97' }}
             footer={
               <>
-                <Button label="Cancelar" icon="pi pi-times" text onClick={hideDialog} />
-                <Button label="Guardar" icon="pi pi-check" text onClick={saveDemandadoSol} />
+                <Button label="Cancelar" severity="danger" icon="pi pi-times" onClick={hideDialog} />
+                <Button label="Guardar" severity="success" icon="pi pi-check" onClick={saveDemandadoSol} />
               </>
             }
           >
+            <Divider />
             <div className="field">
               <label htmlFor="nombreDemandadoSol">Nombre Razón Social</label>
               <InputText
@@ -1053,6 +1061,7 @@ const DemandaForm: React.FC = () => {
               />
               {rutRepLegal.error && <small className="p-error">{rutRepLegal.error}</small>}
             </div>
+            <Divider />
           </Dialog>
           <Dialog
             visible={deleteDialog}
@@ -1114,7 +1123,7 @@ const DemandaForm: React.FC = () => {
               <InputTextarea id="funciones" value={formData.funciones} onChange={(e) => handleChange({ target: { name: 'funciones', value: e.target.value } })} placeholder="Ingrese sus funciones" rows={5} cols={30} />
             </div>
 
-            <div className="field col-12 md:col-4">
+            <div className="field col-12 md:col-3">
               <label htmlFor="jornada">Jornada</label>
               <Dropdown
                 id="jornada"
@@ -1128,13 +1137,13 @@ const DemandaForm: React.FC = () => {
             </div>
 
             {formData.jornada === 'otra especificar' && (
-              <div className="field col-12 md:col-4">
+              <div className="field col-12 md:col-3">
                 <label htmlFor="otraJornada">Especificar:</label>
                 <InputText id="otraJornada" value={formData.otraJornada ?? ''} onChange={(e) => handleChange({ target: { name: 'otraJornada', value: e.target.value || null } })} placeholder="Especificar otra jornada" />
               </div>
             )}
 
-            <div className="field col-12 md:col-4">
+            <div className="field col-12 md:col-3">
               <label htmlFor="regAsistencia">Registro de Asistencia</label>
               <div className="field-radiobutton">
                 <RadioButton inputId="regAsistencia" name="regAsistencia" value="Sí" checked={radioValueRegAsistencia === 'Sí'} onChange={(e) => setRadioValueRegAsistencia(e.value)} />
@@ -1146,12 +1155,12 @@ const DemandaForm: React.FC = () => {
               </div>
             </div>
 
-            <div className="field col-12 md:col-4">
+            <div className="field col-12 md:col-3">
               <label htmlFor="remuneracion">Remuneración</label>
               <InputNumber id="remuneracion" mode="decimal" placeholder="especificar monto" value={formData.remuneracion} onValueChange={(e) => handleChange({ target: { name: 'remuneracion', value: e.value ?? null } })} />
             </div>
 
-            <div className="field col-12 md:col-4">
+            <div className="field col-12 md:col-3">
               <label htmlFor="formaPago">Forma de Pago</label>
               <Dropdown
                 id="formaPago"
@@ -1175,39 +1184,6 @@ const DemandaForm: React.FC = () => {
                 <label htmlFor="liquidacionSueldo2">No</label>
               </div>
             </div>
-
-            {/* ====== NUEVOS SELECTORES DE MESES/AÑO ====== */}
-            <div className="field col-12">
-              <label className="mb-2 block">Cotizaciones de Salud (meses impagos)</label>
-              <MesAnoSelector
-                label="Cotizaciones de Salud (meses impagos)"
-                value={formData.cotizacionSalud}
-                onChange={(v: string[]) => setField('cotizacionSalud', v)}
-                years={years}
-              />
-            </div>
-
-            <div className="field col-12">
-              <label className="mb-2 block">Cotizaciones AFP (meses impagos)</label>
-              <MesAnoSelector
-                label="Cotizaciones AFP (meses impagos)"
-                value={formData.cotizacionAfp}
-                onChange={(v: string[]) => setField('cotizacionAfp', v)}
-                years={years}
-              />
-            </div>
-
-            <div className="field col-12">
-              <label className="mb-2 block">Cotizaciones AFC (meses impagos)</label>
-              <MesAnoSelector
-                label="Cotizaciones AFC (meses impagos)"
-                value={formData.cotizacionAfc}
-                onChange={(v: string[]) => setField('cotizacionAfc', v)}
-                years={years}
-              />
-            </div>
-            {/* ====== /NUEVOS SELECTORES ====== */}
-
             <div className="field col-12 md:col-4">
               <label htmlFor="vacaciones">Vacaciones</label>
               <InputNumber
@@ -1224,6 +1200,40 @@ const DemandaForm: React.FC = () => {
               <label htmlFor="fuero">Fuero</label>
               <Dropdown id="fuero" value={formData.fuero} onChange={(e) => handleChange({ target: { name: 'fuero', value: e.value } })} options={dropdownItemsFueros} optionLabel="name" optionValue="name" placeholder="Seleccione" />
             </div>
+
+            {/* ====== NUEVOS SELECTORES DE MESES/AÑO ====== */}
+            <div className="field col-4">
+              <label className="mb-2 block">Cotizaciones de Salud (meses impagos)</label>
+              <GestionarMesesAnos
+                title="Cotizaciones de Salud"
+                value={formData.cotizacionSalud}
+                onChange={(v) => setField('cotizacionSalud', v)}
+                triggerLabel="Gestionar años"
+              />
+            </div>
+
+            <div className="field col-4">
+              <label className="mb-2 block">Cotizaciones AFP (meses impagos)</label>
+              <GestionarMesesAnos
+                title="Cotizaciones AFP"
+                value={formData.cotizacionAfp}
+                onChange={(v) => setField('cotizacionAfp', v)}
+                triggerLabel="Gestionar años"
+              />
+            </div>
+
+            <div className="field col-4">
+              <label className="mb-2 block">Cotizaciones AFC (meses impagos)</label>
+              <GestionarMesesAnos
+                title="Cotizaciones AFC"
+                value={formData.cotizacionAfc}
+                onChange={(v) => setField('cotizacionAfc', v)}
+                triggerLabel="Gestionar años"
+              />
+            </div>
+            {/* ====== /NUEVOS SELECTORES ====== */}
+
+            
           </div>
         </div>
       </div>
@@ -1363,6 +1373,7 @@ const DemandaForm: React.FC = () => {
           bottom: '20px',
           right: '20px',
           zIndex: 9999,
+          fontSize: '1.3rem',
         }}
         onClick={handleSubmit as any}
       />
