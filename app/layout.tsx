@@ -96,7 +96,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 <link id="theme-css" href={`/themes/lara-light-blue/theme.css`} rel="stylesheet"></link>
             </head>
             <body>
-                <PrimeReactProvider>
+                <PrimeReactProvider value={{ ripple: true }}>
                     <LayoutProvider>{children}</LayoutProvider>
                 </PrimeReactProvider>
             </body>
