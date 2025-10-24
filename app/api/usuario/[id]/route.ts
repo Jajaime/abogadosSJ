@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 
 import { requireSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
+const ROLES_ALLOWLIST = new Set(['user', 'admin']);
+
 const requireAdminSession = async () => {
   const session = await requireSession();
-  if (!session.roles.includes('admin')) {
+  if (!session.roles?.includes('admin')) {
     throw new Error('FORBIDDEN');
   }
   return session;
@@ -25,12 +28,23 @@ const handleAuthError = (error: unknown) => {
   return null;
 };
 
-// GET /api/usuario/:id -> obtener uno
+const selectSafeUser = {
+  id: true,
+  email: true,
+  name: true,
+  roles: true,
+  createdAt: true,
+} as const;
+
+// GET /api/usuario/:id
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     await requireAdminSession();
-    const { id } = await ctx.params;
-    const user = await prisma.usuario.findUnique({ where: { id } });
+    const { id } = await ctx.params; // 👈 importante: await
+    const user = await prisma.usuario.findUnique({
+      where: { id },
+      select: selectSafeUser,
+    });
     if (!user) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
     }
@@ -38,35 +52,75 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   } catch (error) {
     const authResponse = handleAuthError(error);
     if (authResponse) return authResponse;
-    console.error('Error al obtener usuario:', error);
     return NextResponse.json({ error: 'Error al obtener usuario' }, { status: 500 });
   }
 }
 
-// PUT /api/usuario/:id -> actualizar (parcial)
+// PUT /api/usuario/:id
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     await requireAdminSession();
-    const { id } = await ctx.params;
-    const body = await req.json();
-    const { email, name } = body ?? {};
+    const { id } = await ctx.params; // 👈 importante: await
 
-    if (email === undefined && name === undefined) {
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Body inválido' }, { status: 400 });
+    }
+
+    let { email, name, roles, password } = body as {
+      email?: string;
+      name?: string | null;
+      roles?: string[];
+      password?: string;
+    };
+
+    if (
+      email === undefined &&
+      name === undefined &&
+      roles === undefined &&
+      (password === undefined || password === '')
+    ) {
       return NextResponse.json({ error: 'No hay campos para actualizar' }, { status: 400 });
     }
-    if (email !== undefined && typeof email !== 'string') {
-      return NextResponse.json({ error: 'Email inválido' }, { status: 400 });
+
+    const data: Record<string, any> = {};
+
+    if (email !== undefined) {
+      if (typeof email !== 'string' || !email.trim()) {
+        return NextResponse.json({ error: 'Email inválido' }, { status: 400 });
+      }
+      data.email = email.trim().toLowerCase();
     }
-    if (name !== undefined && !(typeof name === 'string' || name === null)) {
-      return NextResponse.json({ error: 'Nombre inválido' }, { status: 400 });
+
+    if (name !== undefined) {
+      if (!(typeof name === 'string' || name === null)) {
+        return NextResponse.json({ error: 'Nombre inválido' }, { status: 400 });
+      }
+      data.name = typeof name === 'string' ? name.trim() : null;
+    }
+
+    if (roles !== undefined) {
+      if (!Array.isArray(roles) || roles.some((r) => typeof r !== 'string')) {
+        return NextResponse.json({ error: 'Roles inválidos' }, { status: 400 });
+      }
+      const cleaned = roles.filter((r) => ROLES_ALLOWLIST.has(r));
+      data.roles = cleaned.length ? cleaned : ['user'];
+    }
+
+    if (password !== undefined) {
+      if (password) {
+        if (typeof password !== 'string' || password.trim().length < 6) {
+          return NextResponse.json({ error: 'Password debe tener al menos 6 caracteres' }, { status: 400 });
+        }
+        data.passwordHash = await bcrypt.hash(password, 12);
+      }
+      // si viene string vacío, no cambia el hash
     }
 
     const updated = await prisma.usuario.update({
       where: { id },
-      data: {
-        ...(email !== undefined ? { email } : {}),
-        ...(name !== undefined ? { name } : {}),
-      },
+      data,
+      select: selectSafeUser,
     });
 
     return NextResponse.json(updated, { status: 200 });
@@ -79,16 +133,15 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     if (error?.code === 'P2002') {
       return NextResponse.json({ error: 'El email ya está registrado' }, { status: 409 });
     }
-    console.error('Error al actualizar usuario:', error);
     return NextResponse.json({ error: 'Error al actualizar usuario' }, { status: 500 });
   }
 }
 
-// DELETE /api/usuario/:id -> eliminar
+// DELETE /api/usuario/:id
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     await requireAdminSession();
-    const { id } = await ctx.params;
+    const { id } = await ctx.params; // 👈 importante: await
     await prisma.usuario.delete({ where: { id } });
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error: any) {
@@ -97,7 +150,6 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     if (error?.code === 'P2025') {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
     }
-    console.error('Error al eliminar usuario:', error);
     return NextResponse.json({ error: 'Error al eliminar usuario' }, { status: 500 });
   }
 }
