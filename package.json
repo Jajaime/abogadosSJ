@@ -13,6 +13,8 @@
     "seed": "tsx prisma/seed.ts",
     "format": "prettier --write \"{app,demo,layout,types}/**/*.{js,ts,tsx,d.ts}\"",
     "lint": "eslint \"{app,components,hooks,layout,lib,utils,prisma,types}/**/*.{ts,tsx,js,jsx}\"",
+    "test": "vitest run",
+    "sessions:clamp": "tsx prisma/scripts/clamp-session-expiry.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -51,6 +53,7 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.46.1"
+    "typescript-eslint": "^8.46.1",
+    "vitest": "^1.6.0"
   }
 }

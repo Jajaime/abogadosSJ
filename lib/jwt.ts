@@ -63,6 +63,7 @@ export const REFRESH_AUDIENCE = `${DEFAULT_AUDIENCE}:refresh`;
 
 export const ACCESS_TOKEN_TTL = process.env.JWT_ACCESS_TOKEN_TTL ?? '15m';
 export const REFRESH_TOKEN_TTL = process.env.JWT_REFRESH_TOKEN_TTL ?? '30d';
+export const SESSION_REFRESH_TOKEN_TTL = process.env.JWT_SESSION_REFRESH_TOKEN_TTL ?? '1d';
 export const CLOCK_TOLERANCE = process.env.JWT_CLOCK_TOLERANCE ?? '60s';
 
 const durationUnits: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };
@@ -79,6 +80,7 @@ export const ttlToSeconds = (ttl: string | number): number => {
 
 export const ACCESS_TOKEN_MAX_AGE_SECONDS = ttlToSeconds(ACCESS_TOKEN_TTL);
 export const REFRESH_TOKEN_MAX_AGE_SECONDS = ttlToSeconds(REFRESH_TOKEN_TTL);
+export const SESSION_REFRESH_TOKEN_MAX_AGE_SECONDS = ttlToSeconds(SESSION_REFRESH_TOKEN_TTL);
 export const CLOCK_TOLERANCE_SECONDS = ttlToSeconds(CLOCK_TOLERANCE);
 
 // ===== KID actual y claves =====

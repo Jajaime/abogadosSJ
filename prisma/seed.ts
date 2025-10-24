@@ -84,7 +84,7 @@ async function main() {
       jornada: 'Parcial',
       otraJornada: 'Lunes a Viernes 09:00-13:00',
       registroAsistencia: false,
-      remuneracion: new Prisma.Decimal(650000.5),
+      remuneracion: new Prisma.Decimal(650000.0),
       formaPago: 'Depósito',
       liquidacionSueldo: true,
       cotizacionSalud: ['2024-08', '2025-01'],

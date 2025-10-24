@@ -23,7 +23,6 @@ import { useRut } from '@/hooks/useRut';
 import { apiFetch } from '@/utils/apiClient';
 
 import type { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
-import MesAnoSelector from '@/components/MesAnoSelector';
 import GestionarMesesAnos from '@/components/GestionarMesesAnos';
 
 type DropdownItem = { name: string; code: string };

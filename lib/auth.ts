@@ -10,7 +10,7 @@ import {
     DEFAULT_ISSUER,
     REFRESH_AUDIENCE,
     REFRESH_TOKEN_MAX_AGE_SECONDS,
-    REFRESH_TOKEN_TTL,
+    SESSION_REFRESH_TOKEN_MAX_AGE_SECONDS,
     getSigningParams,
     verifyAccessTokenJwt,
     verifyRefreshTokenJwt
@@ -31,6 +31,8 @@ export interface SessionInfo {
     version: number;
     /** persistencia del refresh cookie (Recordarme) */
     remember?: boolean;
+    /** fecha límite absoluta para la sesión/refresh */
+    expiresAt: Date;
 }
 
 interface AccessTokenPayload {
@@ -80,7 +82,10 @@ const normalizeRoles = (roles?: unknown): string[] => {
 
 const newCsrfToken = () => randomBytes(32).toString('base64url');
 const hashRefreshToken = (token: string) => createHash('sha256').update(token).digest('hex');
-const refreshExpiryDate = () => new Date(Date.now() + REFRESH_TOKEN_MAX_AGE_SECONDS * 1000);
+const computeSessionExpiry = (remember: boolean) => {
+    const ttlSeconds = remember ? REFRESH_TOKEN_MAX_AGE_SECONDS : SESSION_REFRESH_TOKEN_MAX_AGE_SECONDS;
+    return new Date(Date.now() + ttlSeconds * 1000);
+};
 
 const signAccessToken = async ({ userId, sessionId, roles, version }: AccessTokenPayload) => {
     const { key, kid } = getSigningParams();
@@ -94,7 +99,7 @@ const signAccessToken = async ({ userId, sessionId, roles, version }: AccessToke
         .sign(key);
 };
 
-const signRefreshToken = async ({ userId, sessionId, version, rmb }: RefreshTokenPayload) => {
+const signRefreshToken = async ({ userId, sessionId, version, rmb }: RefreshTokenPayload, expiresAt: Date) => {
     const { key, kid } = getSigningParams();
     // incluimos "rmb" en el payload del refresh
     return new SignJWT({ sid: sessionId, ver: version, rmb })
@@ -103,7 +108,7 @@ const signRefreshToken = async ({ userId, sessionId, version, rmb }: RefreshToke
         .setSubject(userId)
         .setIssuer(DEFAULT_ISSUER)
         .setAudience(REFRESH_AUDIENCE)
-        .setExpirationTime(REFRESH_TOKEN_TTL)
+        .setExpirationTime(expiresAt)
         .sign(key);
 };
 
@@ -132,20 +137,23 @@ export const createAccessCookie = (token: string): CookieDescriptor =>
  *  - remember = true  => persistente (Max-Age)
  *  - remember = false => cookie de sesión (sin Max-Age)
  */
-export const createRefreshCookie = (token: string, remember: boolean): CookieDescriptor =>
+export const createRefreshCookie = (
+    token: string,
+    options: { remember: boolean; maxAgeSeconds?: number }
+): CookieDescriptor =>
     buildCookie(REFRESH_TOKEN_COOKIE_NAME, token, {
         httpOnly: true,
-        maxAge: remember ? REFRESH_TOKEN_MAX_AGE_SECONDS : undefined
+        maxAge: options.remember ? options.maxAgeSeconds ?? REFRESH_TOKEN_MAX_AGE_SECONDS : undefined
     });
 
-export const createCsrfCookie = (token: string): CookieDescriptor => ({
+export const createCsrfCookie = (token: string, maxAgeSeconds?: number): CookieDescriptor => ({
     name: CSRF_COOKIE_NAME,
     value: token,
     httpOnly: false,
     secure: isProduction,
     sameSite: 'strict',
     path: '/',
-    maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS
+    maxAge: maxAgeSeconds ?? REFRESH_TOKEN_MAX_AGE_SECONDS
 });
 
 export const clearAuthCookies = (): CookieDescriptor[] => [
@@ -168,10 +176,16 @@ export const buildSessionCookies = (
     opts: { remember?: boolean } = {}
 ): CookieDescriptor[] => {
     const remember = opts.remember ?? tokens.session.remember ?? false;
+    const expiresAt = tokens.session.expiresAt;
+    const secondsUntilExpiry =
+        expiresAt instanceof Date ? Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)) : undefined;
+    const refreshMaxAge = remember ? secondsUntilExpiry ?? REFRESH_TOKEN_MAX_AGE_SECONDS : undefined;
+    const csrfMaxAge =
+        secondsUntilExpiry ?? (remember ? REFRESH_TOKEN_MAX_AGE_SECONDS : SESSION_REFRESH_TOKEN_MAX_AGE_SECONDS);
     return [
         createAccessCookie(tokens.accessToken),
-        createRefreshCookie(tokens.refreshToken, remember),
-        createCsrfCookie(tokens.csrfToken)
+        createRefreshCookie(tokens.refreshToken, { remember, maxAgeSeconds: refreshMaxAge }),
+        createCsrfCookie(tokens.csrfToken, csrfMaxAge)
     ];
 };
 
@@ -199,7 +213,7 @@ const mapAccessPayloadToSession = async (payload: any): Promise<SessionInfo> => 
     }
 
     const roles = normalizeRoles(payload.roles);
-    return { userId, sessionId, roles, version } satisfies SessionInfo;
+    return { userId, sessionId, roles, version, expiresAt: record.expiresAt } satisfies SessionInfo;
 };
 
 const mapRefreshPayload = (payload: any): RefreshTokenPayload => {
@@ -223,13 +237,14 @@ export const createUserSession = async (
     const normalizedRoles = normalizeRoles(roles);
     const sessionId = randomUUID();
     const version = 0;
+    const expiresAt = computeSessionExpiry(remember);
 
     const refreshToken = await signRefreshToken({
         userId,
         sessionId,
         version,
         rmb: remember
-    });
+    }, expiresAt);
 
     await prisma.session.create({
         data: {
@@ -238,7 +253,7 @@ export const createUserSession = async (
             version,
             refreshTokenHash: hashRefreshToken(refreshToken),
             // vida máxima de la sesión en el servidor (independiente del cookie)
-            expiresAt: refreshExpiryDate()
+            expiresAt
         }
     });
 
@@ -259,7 +274,8 @@ export const createUserSession = async (
             sessionId,
             roles: normalizedRoles,
             version,
-            remember
+            remember,
+            expiresAt
         }
     } satisfies IssuedSessionTokens;
 };
@@ -296,20 +312,22 @@ export const rotateSessionWithRefreshToken = async (refreshToken: string): Promi
     const roles = normalizeRoles(user.roles);
     const nextVersion = record.version + 1;
 
-    const newRefreshToken = await signRefreshToken({
-        userId: user.id,
-        sessionId: record.id,
-        version: nextVersion,
-        // mantenemos la preferencia de persistencia original
-        rmb: input.rmb
-    });
+    const newRefreshToken = await signRefreshToken(
+        {
+            userId: user.id,
+            sessionId: record.id,
+            version: nextVersion,
+            // mantenemos la preferencia de persistencia original
+            rmb: input.rmb
+        },
+        record.expiresAt
+    );
 
     await prisma.session.update({
         where: { id: record.id },
         data: {
             version: nextVersion,
-            refreshTokenHash: hashRefreshToken(newRefreshToken),
-            expiresAt: refreshExpiryDate()
+            refreshTokenHash: hashRefreshToken(newRefreshToken)
         }
     });
 
@@ -330,7 +348,8 @@ export const rotateSessionWithRefreshToken = async (refreshToken: string): Promi
             sessionId: record.id,
             roles,
             version: nextVersion,
-            remember: input.rmb
+            remember: input.rmb,
+            expiresAt: record.expiresAt
         }
     } satisfies IssuedSessionTokens;
 };

@@ -1,3 +1,9 @@
 {
-    "CodeGPT.apiKey": "Anthropic"
+  "CodeGPT.apiKey": "Anthropic",
+  "files.associations": {
+    "tsconfig.json": "jsonc",
+    "tsconfig.*.json": "jsonc"
+  },
+  // Si tu red bloquea el esquema, desactiva su descarga para quitar el warning
+  "json.schemaDownload.enable": false
 }
