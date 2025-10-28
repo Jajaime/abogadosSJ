@@ -2,9 +2,19 @@
 import {
   toUpperCL, toTitleCL, formatFechaLargaISO, formatCLP, formatRut, listaNatural
 } from './formatters';
+import { diffYMD, yearsForIndemnizacion, calcIndemnizacionSimple, calcRecargo30PorCiento } from './labor';
 
 // Ajusta los nombres de campos a tu DTO real:
 export function decorateDemandaForDocx(d: any) {
+
+  // período exacto entre inicio y término
+  const ymd = diffYMD(d?.fechaInicioRelacionLaboral, d?.fechaTerminoRelaLaboral);
+  const yIndem = yearsForIndemnizacion(ymd);
+
+  // indemnización simple (sin topes/reglas adicionales)
+  const indemMonto = calcIndemnizacionSimple(d?.remuneracion, yIndem);
+  // recargo del 30 % sobre la indemnización base
+  const recargo30 = calcRecargo30PorCiento(indemMonto);
 
   const materias_texto = listaNatural(
     Array.isArray(d?.materias) ? d.materias : [],
@@ -39,8 +49,23 @@ export function decorateDemandaForDocx(d: any) {
     domicilioParticular_upper: toUpperCL(d?.domicilioParticular),
 
     // variantes específicas
-
+    // === NUEVO: período de servicios ===
+    aniosServicio_num: ymd.years,           // 4
+    mesesServicio_num: ymd.months,          // 9
+    diasServicio_num: ymd.days,             // 30
+    aniosServicio_redondeado: yIndem,       // 5 (si meses>=6 → +1)
+    aniosServicio_texto: `${ymd.years} años y ${ymd.months} meses`, // para párrafos
+    // si quieres incluir días:
+    aniosServicio_texto_largo:
+      `${ymd.years} años, ${ymd.months} meses y ${ymd.days} días`,
     
+    // === NUEVO: indemnización simple (mostrar) ===
+    indemnizacion_anios_base: ymd.years,
+    indemnizacion_anios_redondeado: yIndem,
+    indemnizacion_monto_num: indemMonto,
+    indemnizacion_monto_clp: formatCLP(indemMonto),
+    indemnizacion_recargo30_num: recargo30,
+    indemnizacion_recargo30_clp: formatCLP(recargo30),    
 
     // listas / arrays
     materias_texto,

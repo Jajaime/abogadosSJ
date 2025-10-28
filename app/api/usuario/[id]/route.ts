@@ -3,10 +3,11 @@ import bcrypt from 'bcryptjs';
 
 import { requireSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { revokeUserSessions } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
-const ROLES_ALLOWLIST = new Set(['user', 'admin']);
+const ROLES_ALLOWLIST = new Set(['jefe_estudio', 'abogado_redactor', 'admin']);
 
 const requireAdminSession = async () => {
   const session = await requireSession();
@@ -100,11 +101,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     }
 
     if (roles !== undefined) {
-      if (!Array.isArray(roles) || roles.some((r) => typeof r !== 'string')) {
+      if (!Array.isArray(roles) || roles.some(r => typeof r !== 'string')) {
         return NextResponse.json({ error: 'Roles inválidos' }, { status: 400 });
       }
-      const cleaned = roles.filter((r) => ROLES_ALLOWLIST.has(r));
-      data.roles = cleaned.length ? cleaned : ['user'];
+      const cleaned = roles.filter(r => ROLES_ALLOWLIST.has(r));
+      data.roles = cleaned; // sin forzar nada; si quieres default:
+      // data.roles = cleaned.length ? cleaned : ['abogado_redactor'];
     }
 
     if (password !== undefined) {
@@ -122,6 +124,10 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       data,
       select: selectSafeUser,
     });
+
+    if (roles !== undefined) {
+      await revokeUserSessions(updated.id);
+    }
 
     return NextResponse.json(updated, { status: 200 });
   } catch (error: any) {

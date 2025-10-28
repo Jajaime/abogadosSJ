@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
-const ROLES_ALLOWLIST = new Set(['user', 'admin']);
+const ROLES_ALLOWLIST = new Set(['jefe_estudio', 'abogado_redactor', 'admin']);
 
 const ensureAdmin = async () => {
   const session = await requireSession();
@@ -77,15 +77,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nombre inválido' }, { status: 400 });
     }
     if (roles !== undefined) {
-      if (!Array.isArray(roles) || roles.some((r) => typeof r !== 'string')) {
-        return NextResponse.json({ error: 'Roles inválidos' }, { status: 400 });
-      }
-      // Filtra/valida roles
-      roles = roles.filter((r) => ROLES_ALLOWLIST.has(r));
-      if (roles.length === 0) roles = ['user'];
-    } else {
-      roles = ['user']; // default
+    if (!Array.isArray(roles) || roles.some(r => typeof r !== 'string')) {
+      return NextResponse.json({ error: 'Roles inválidos' }, { status: 400 });
     }
+    roles = roles.filter(r => ROLES_ALLOWLIST.has(r));
+      if (roles.length === 0) roles = ['abogado_redactor']; // nuevo default
+      } else {
+        roles = ['abogado_redactor'];
+      }
 
     let passwordHash: string | undefined = undefined;
     if (password !== undefined) {

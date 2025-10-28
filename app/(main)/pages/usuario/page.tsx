@@ -214,7 +214,7 @@ export default function UsuariosPage() {
 
                         <Column field="name" header="Nombre" sortable headerStyle={{ minWidth: '14rem' }} />
                         <Column field="email" header="Correo" sortable headerStyle={{ minWidth: '16rem' }} />
-                        <Column field="createdAt" header="Creado" body={formatFecha} sortable headerStyle={{ minWidth: '14rem' }} />
+                        <Column field="roles" header="Privilegios" sortable headerStyle={{ minWidth: '14rem' }} />
 
                         {/* Acciones CRUD */}
                         <Column header="Acciones" body={actionsTemplate} headerStyle={{ minWidth: '10rem' }} />

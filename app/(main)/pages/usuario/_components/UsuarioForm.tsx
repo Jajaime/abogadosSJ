@@ -5,7 +5,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
-import { MultiSelect, MultiSelectChangeEvent } from 'primereact/multiselect';
+import type { MultiSelectChangeEvent } from 'primereact/multiselect';
+import { MultiSelect } from 'primereact/multiselect';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
 import { Toast } from 'primereact/toast';
@@ -27,8 +28,9 @@ type UsuarioPayload = {
 };
 
 const ROLE_OPTIONS = [
-  { label: 'admin', value: 'admin' },
-  { label: 'user', value: 'user' },
+  { label: 'Jefe Estudio', value: 'jefe_estudio' },
+  { label: 'Abogado Redactor', value: 'abogado_redactor' },
+  { label: 'Admin', value: 'admin' },
 ];
 
 const UsuarioForm: React.FC = () => {
@@ -49,7 +51,7 @@ const UsuarioForm: React.FC = () => {
   const [formData, setFormData] = useState<Usuario>({
     email: '',
     name: '',
-    roles: ['user'], // valor por defecto según tu modelo
+    roles: ['abogado_redactor'], // valor por defecto según tu modelo
   });
   const [password, setPassword] = useState<string>(''); // solo para crear/actualizar
   const [loading, setLoading] = useState<boolean>(isEdit);
@@ -69,7 +71,7 @@ const UsuarioForm: React.FC = () => {
         setFormData({
           email: data.email ?? '',
           name: data.name ?? '',
-          roles: Array.isArray(data.roles) && data.roles.length ? data.roles : ['user'],
+          roles: Array.isArray(data.roles) && data.roles.length ? data.roles : ['abogado_redactor'],
         });
       } catch (e: any) {
         setError(e.message || 'Error al cargar el usuario');
@@ -87,8 +89,7 @@ const UsuarioForm: React.FC = () => {
 
   const handleRolesChange = (e: MultiSelectChangeEvent) => {
     const nextRoles = (e.value as string[]) ?? [];
-    // Asegura que al menos tenga 'user' si se dejan vacíos (puedes quitar esta línea si quieres permitir vacío)
-    setFormData(prev => ({ ...prev, roles: nextRoles.length ? nextRoles : ['user'] }));
+    setFormData(prev => ({ ...prev, roles: nextRoles }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,7 +105,7 @@ const UsuarioForm: React.FC = () => {
       const payload: UsuarioPayload = {
         email: formData.email.trim(),
         name: formData.name?.trim() || undefined,
-        roles: formData.roles?.length ? formData.roles : ['user'],
+        roles: formData.roles?.length ? formData.roles : ['abogado_redactor'],
         ...(password ? { password } : {}), // si está vacío (editar), no se envía
       };
 
@@ -144,14 +145,14 @@ const UsuarioForm: React.FC = () => {
           <ProgressSpinner />
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="p-fluid formgrid grid">
+        <form onSubmit={handleSubmit} className="p-fluid formgrid">
           {error && (
             <div className="col-12">
               <Message severity="error" text={error} />
             </div>
           )}
 
-          <div className="field col-12 md:col-6">
+          <div className="field col-12">
             <label htmlFor="name">Nombre</label>
             <InputText
               id="name"
@@ -163,7 +164,7 @@ const UsuarioForm: React.FC = () => {
             />
           </div>
 
-          <div className="field col-12 md:col-6">
+          <div className="field col-12">
             <label htmlFor="email">Correo Electrónico</label>
             <InputText
               id="email"
@@ -177,7 +178,7 @@ const UsuarioForm: React.FC = () => {
             />
           </div>
 
-          <div className="field col-12 md:col-6">
+          <div className="field col-12">
             <label htmlFor="roles">Roles</label>
             <MultiSelect
               id="roles"
@@ -189,10 +190,10 @@ const UsuarioForm: React.FC = () => {
               filter
               disabled={submitting}
             />
-            <small className="text-color-secondary">Si no seleccionas, se usará <b>user</b> por defecto.</small>
+            <small className="text-color-secondary">Si no seleccionas, se usará <b>Abogado Redactor</b> por defecto.</small>
           </div>
 
-          <div className="field col-12 md:col-6">
+          <div className="field col-12">
             <label htmlFor="password">{isEdit ? 'Cambiar contraseña (opcional)' : 'Contraseña'}</label>
             <Password
               id="password"
@@ -205,7 +206,10 @@ const UsuarioForm: React.FC = () => {
               inputStyle={{ width: '100%' }}
             />
           </div>
-
+          <div className="field col-12">
+          </div>
+          <div className="field col-12">
+          </div>
           <div className="field col-12 text-center">
             <div className="flex gap-2 justify-content-center">
               <Button

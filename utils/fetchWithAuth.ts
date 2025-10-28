@@ -2,11 +2,7 @@
 import { withCsrfHeader } from '@/utils/csrf';
 
 const REFRESH_ENDPOINT = '/api/auth/refresh';
-const SAFE_TO_SKIP_REFRESH = new Set<string>([
-  '/api/login',
-  '/api/auth/refresh',
-  '/api/logout',
-]);
+const SAFE_TO_SKIP_REFRESH = new Set<string>(['/api/login', '/api/auth/refresh', '/api/logout']);
 
 const DEFAULT_ORIGIN =
   typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
@@ -29,9 +25,44 @@ const cloneRequest = (input: RequestInfo | URL, init?: RequestInit): Request => 
 
 const attemptFetch = (request: Request) => fetch(request.clone());
 
+/** ========= Mutex de refresh (una sola llamada en vuelo) ========= */
+let refreshPromise: Promise<boolean> | null = null;
+
+/**
+ * Dispara el refresh solo si no hay otro en vuelo.
+ * Devuelve true si el refresh fue exitoso; false en caso contrario.
+ */
+async function refreshOnce(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(
+        REFRESH_ENDPOINT,
+        withCsrfHeader({
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Cache-Control': 'no-store' }
+        })
+      );
+      return res.ok;
+    } catch (e) {
+      console.error('[fetchWithAuth] refresh failed', e);
+      return false;
+    } finally {
+      // libera el lock en el próximo tick para que los "await" pendientes resuelvan primero
+      setTimeout(() => {
+        refreshPromise = null;
+      }, 0);
+    }
+  })();
+
+  return refreshPromise;
+}
+
 /**
  * Hace fetch incluyendo cookies. Si recibe 401, intenta:
- *  - POST /api/auth/refresh con CSRF (doble-submit)
+ *  - POST /api/auth/refresh con CSRF (doble-submit) usando mutex
  *  - Reintenta UNA sola vez la request original.
  */
 export const fetchWithAuth = async <T extends RequestInfo | URL>(
@@ -44,29 +75,33 @@ export const fetchWithAuth = async <T extends RequestInfo | URL>(
     return fetch(input as RequestInfo, mergedInit);
   }
 
+  // Si ya marcamos que es un reintento, no volvemos a entrar en el bucle de refresh
+  const originalHeaders = new Headers((init && init.headers) || {});
+  const isRetry = originalHeaders.get('x-auth-retry') === '1';
+
   const request = cloneRequest(input, init);
   let response = await attemptFetch(request);
 
-  if (response.status !== 401 || !shouldAttemptRefresh(request)) {
+  if (response.status !== 401 || !shouldAttemptRefresh(request) || isRetry) {
     return response;
   }
 
-  try {
-    // Refresh con header CSRF y credenciales incluidas
-    const refreshResponse = await fetch(
-      REFRESH_ENDPOINT,
-      withCsrfHeader({ method: 'POST', headers: { 'Cache-Control': 'no-store' } })
-    );
-
-    if (!refreshResponse.ok) {
-      return response; // sigue 401 → que el caller decida (redirigir a login, etc.)
-    }
-
-    // Reintento una única vez
-    response = await attemptFetch(request);
-    return response;
-  } catch (error) {
-    console.error('[fetchWithAuth] refresh failed', error);
+  // Mutex: varias 401 simultáneas esperarán el mismo refreshOnce()
+  const ok = await refreshOnce();
+  if (!ok) {
+    // refresh falló; devolvemos la respuesta 401 original y que el caller decida (logout, redirect, etc.)
     return response;
   }
+
+  // Reintento una única vez con marca para evitar loops
+  const retryHeaders = new Headers(originalHeaders);
+  retryHeaders.set('x-auth-retry', '1');
+
+  const retryRequest = cloneRequest(input, {
+    ...(init || {}),
+    headers: retryHeaders,
+    credentials: 'include'
+  });
+
+  return attemptFetch(retryRequest);
 };
