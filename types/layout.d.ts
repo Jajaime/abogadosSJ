@@ -93,6 +93,7 @@ export interface AppMenuItem extends MenuModel {
     disabled?: boolean;
     replaceUrl?: boolean;
     command?: ({ originalEvent, item }: CommandProps) => void;
+    requiredPerm?: import('@/lib/authz').PermKey; // 👈 cambia esta línea
 }
 
 export interface AppMenuItemProps {

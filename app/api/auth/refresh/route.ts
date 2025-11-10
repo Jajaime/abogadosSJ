@@ -6,7 +6,7 @@ import {
   getRefreshTokenFromCookies,
   getCsrfTokenFromCookies,
   rotateSessionWithRefreshToken,
-} from '@/lib/auth';
+} from '@/lib/auth.server';
 import { CSRF_HEADER_NAME } from '@/lib/jwt-public';
 
 export const runtime = 'nodejs';

@@ -186,8 +186,7 @@ const UsuarioForm: React.FC = () => {
               value={formData.roles}
               options={ROLE_OPTIONS}
               onChange={handleRolesChange}
-              placeholder="Selecciona roles"
-              filter
+              placeholder="Selecciona el rol"
               disabled={submitting}
             />
             <small className="text-color-secondary">Si no seleccionas, se usará <b>Abogado Redactor</b> por defecto.</small>

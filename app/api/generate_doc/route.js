@@ -10,7 +10,7 @@ import { safeSerializeDemanda, safeSerializeDemandados } from '@/utils/serialize
 import { decorateDemandaForDocx, decorateDemandadoSolidarioForDocx } from '@/utils/decorateDemanda';
 import { formatFechaLargaDate } from '@/utils/formatters';
 import { prisma } from '@/lib/prisma';
-import { requireSession } from '@/lib/auth';
+import { requireSession } from '@/lib/auth.server';
 
 export const runtime = 'nodejs';
 
@@ -587,7 +587,6 @@ export async function POST(request) {
     const demandaDB = await prisma.demanda.findFirst({
       where: {
         id: demandaId,
-        usuarioId: session.userId, // ajusta si tu campo se llama distinto
       },
       include: {
         demandadoSolidario: true, // cámbialo al nombre exacto de tu relación

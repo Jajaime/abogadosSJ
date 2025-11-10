@@ -124,7 +124,7 @@ vi.mock('@/lib/prisma', () => {
   return { prisma };
 });
 
-let authModule: typeof import('@/lib/auth');
+let authModule: typeof import('@/lib/auth.server');
 
 beforeEach(async () => {
   vi.useFakeTimers();
@@ -142,7 +142,7 @@ beforeEach(async () => {
   process.env.JWT_AUDIENCE = 'test-app';
 
   vi.resetModules();
-  authModule = await import('@/lib/auth');
+  authModule = await import('@/lib/auth.server');
 });
 
 afterEach(() => {

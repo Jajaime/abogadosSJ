@@ -7,7 +7,7 @@ import {
   requireSession,
   resolveSessionIdFromRefreshToken,
   revokeSession,
-} from '@/lib/auth';
+} from '@/lib/auth.server';
 import { CSRF_HEADER_NAME } from '@/lib/jwt-public';
 
 export const runtime = 'nodejs';

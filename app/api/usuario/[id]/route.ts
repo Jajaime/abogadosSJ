@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 
-import { requireSession } from '@/lib/auth';
+import { requireSession } from '@/lib/auth.server';
 import { prisma } from '@/lib/prisma';
-import { revokeUserSessions } from '@/lib/auth';
+import { revokeUserSessions } from '@/lib/auth.server';
 
 export const runtime = 'nodejs';
 

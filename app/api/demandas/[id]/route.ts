@@ -1,8 +1,6 @@
-// app/api/demandas/[id]/route.ts
 import { NextResponse } from 'next/server';
 
-import { requireSession } from '@/lib/auth';
-import { findDemandaForUser } from '@/lib/demanda';
+import { requirePerm, isElevated } from '@/lib/api-authz';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -51,44 +49,49 @@ const toResponsePayload = (demanda: any) => ({
 
 /** GET /api/demandas/:id */
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { session, error } = await requirePerm('listDemandas'); // 👈 permiso de lectura
+  if (error) return error;
+
   try {
-    const session = await requireSession();
     const { id: idStr } = await ctx.params;
     const id = Number(idStr);
     if (Number.isNaN(id)) {
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
     }
 
-    const demanda = await findDemandaForUser(id, session.userId, { include: { demandadoSolidario: true } });
+    const demanda = await prisma.demanda.findUnique({
+      where: { id },
+      include: { demandadoSolidario: true },
+    });
     if (!demanda) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
     }
 
-    return NextResponse.json(toResponsePayload(demanda), { status: 200 });
-  } catch (error) {
-    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    // 👇 redactor solo puede ver si es suya
+    if (!isElevated(session.roles) && demanda.usuarioId !== session.userId) {
+      return NextResponse.json({ error: 'Prohibido' }, { status: 403 });
     }
-    console.error('Error al obtener demanda:', error);
+
+    return NextResponse.json(toResponsePayload(demanda), { status: 200 });
+  } catch (e) {
+    console.error('Error al obtener demanda:', e);
     return NextResponse.json({ error: 'Error al obtener demanda' }, { status: 500 });
   }
 }
 
 /** PUT /api/demandas/:id */
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { session, error } = await requirePerm('updateDemanda'); // 👈 solo admin/jefe_estudio
+  if (error) return error;
+
   try {
-    const session = await requireSession();
     const { id: idStr } = await ctx.params;
     const id = Number(idStr);
     if (Number.isNaN(id)) {
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
     }
 
-    const existing = await findDemandaForUser(id, session.userId);
-    if (!existing) {
-      return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
-    }
-
+    // admin/jefe_estudio pueden editar cualquiera; (abogado_redactor no llega acá por permiso)
     const data = await req.json();
     const updateData: any = {};
 
@@ -160,8 +163,13 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     setIfStringArray('materias', data.materias);
 
     const updated = await prisma.$transaction(async (tx) => {
+      // valida existencia
+      const exists = await tx.demanda.findUnique({ where: { id } });
+      if (!exists) return null;
+
       await tx.demanda.update({ where: { id }, data: updateData });
 
+      // reemplazo de demandadoSolidario si viene
       if (Array.isArray(data.demandadoSols)) {
         await tx.demandadoSolidario.deleteMany({ where: { demandaId: id } });
         if (data.demandadoSols.length > 0) {
@@ -188,12 +196,6 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
 
     return NextResponse.json(toResponsePayload(updated), { status: 200 });
   } catch (error: any) {
-    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-    }
-    if (error?.code === 'P2025') {
-      return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
-    }
     if (typeof error?.message === 'string' && error.message.startsWith('Fecha inválida')) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
@@ -207,25 +209,19 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
 
 /** DELETE /api/demandas/:id */
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { error } = await requirePerm('deleteDemanda'); // 👈 solo admin
+  if (error) return error;
+
   try {
-    const session = await requireSession();
     const { id: idStr } = await ctx.params;
     const id = Number(idStr);
     if (Number.isNaN(id)) {
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
     }
 
-    const existing = await findDemandaForUser(id, session.userId);
-    if (!existing) {
-      return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
-    }
-
     await prisma.demanda.delete({ where: { id } });
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error: any) {
-    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-    }
     if (error?.code === 'P2025') {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
     }
@@ -233,4 +229,3 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     return NextResponse.json({ error: 'Error al eliminar demanda' }, { status: 500 });
   }
 }
-

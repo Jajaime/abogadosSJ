@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
-import { buildSessionCookies, createUserSession } from '@/lib/auth';
+import { buildSessionCookies, createUserSession } from '@/lib/auth.server';
 
 export const runtime = 'nodejs';
 

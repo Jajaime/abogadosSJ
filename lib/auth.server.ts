@@ -1,3 +1,4 @@
+import 'server-only';
 import { cookies } from 'next/headers';
 import { SignJWT } from 'jose';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';

@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 
 import { demandaPayloadSchema, MAX_DEMANDA_BODY_SIZE, toDemandaPersistence } from '@/types/demanda.schema';
 import { prisma } from '@/lib/prisma';
-import { requireSession } from '@/lib/auth';
+import { requirePerm, isElevated } from '@/lib/api-authz';
 
 export const runtime = 'nodejs';
 
@@ -54,37 +54,43 @@ const parseDemandaPayload = async (req: Request) => {
 
 /* ---------- GET: lista ---------- */
 export async function GET() {
+  // 👇 permiso fino para listar
+  const { session, error } = await requirePerm('listDemandas');
+  if (error) return error;
+
   try {
-    const session = await requireSession();
+    const where = isElevated(session.roles)
+      ? {} // admin/jefe_estudio ven todas
+      : { usuarioId: session.userId }; // redactor solo las propias
+
     const allDemandas = await prisma.demanda.findMany({
-      where: { usuarioId: session.userId },
+      where,
       orderBy: { createdAt: 'desc' },
       include: { demandadoSolidario: true },
     });
+
     return NextResponse.json(allDemandas.map(mapDemanda), { status: 200 });
-  } catch (error) {
-    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-    }
+  } catch (e) {
     return NextResponse.json({ error: 'Error al obtener las demandas' }, { status: 500 });
   }
 }
 
 /* ---------- POST: crear ---------- */
 export async function POST(req: Request) {
+  // 👇 permiso fino para crear
+  const { session, error } = await requirePerm('createDemanda');
+  if (error) return error;
+
   try {
-    const session = await requireSession();
     const body = await parseDemandaPayload(req);
     const { data, demandadoSols } = toDemandaPersistence(body);
 
     const nuevaDemanda = await prisma.demanda.create({
       data: {
         ...data,
-        usuarioId: session.userId,
+        usuarioId: session.userId, // 👈 dueño = usuario autenticado
         demandadoSolidario: demandadoSols.length
-          ? {
-              create: demandadoSols,
-            }
+          ? { create: demandadoSols }
           : undefined,
       },
       include: { demandadoSolidario: true },
@@ -92,9 +98,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json(mapDemanda(nuevaDemanda), { status: 201 });
   } catch (error: any) {
-    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-    }
     if (error instanceof BadRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
