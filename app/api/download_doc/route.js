@@ -60,11 +60,11 @@ export async function GET(request) {
     }
 
     const { demandaId } = parsed.data;
-    //const isElevated = hasAnyRole(roles, ['admin', 'jefe_estudio']);
+    //const _isElevated = hasAnyRole(roles, ['admin', 'jefe_estudio']);
 
     // ⚠️ Política actual: permitir descarga a cualquier usuario autenticado.
     //    Por eso NO filtramos por usuarioId. Si quieres restringir a dueño excepto roles elevados:
-    //    const where = isElevated ? { demandaId } : { demandaId, usuarioId: session.userId };
+    //    const where = _isElevated ? { demandaId } : { demandaId, usuarioId: session.userId };
     const where = { demandaId };
 
     // Si en tu modelo existen múltiples documentos por demanda,

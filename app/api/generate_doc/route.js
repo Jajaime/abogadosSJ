@@ -11,6 +11,7 @@ import { decorateDemandaForDocx, decorateDemandadoSolidarioForDocx } from '@/uti
 import { formatFechaLargaDate } from '@/utils/formatters';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/auth.server';
+//import { de } from 'zod/v4/locales';
 
 export const runtime = 'nodejs';
 
@@ -107,11 +108,14 @@ function buildClausulas(d, ctx = {}) {
 
   // 2) Motivo -> Mutuo Acuerdo
   if (motivo === 'mutuo acuerdo' || motivo === 'mutuoacuerdo') {
-    return {
-      faltantes: [],
-      clausulas: ['2) Motivo Término -> Mutuo Acuerdo', TXT.soloFeriado],
-      flags: { isMutuoAcuerdo: true },
-    };
+    const flags = { isMutuoAcuerdo: true };
+    clauses.push(
+        '2) Motivo Término -> Mutuo Acuerdo',
+        'Se solicita el pago de los feriados legales y proporcionales pendientes al momento del término de la relación laboral, se solicita el pago Feriado Legal de {{demandaFmt.feriadoLegalHabilesText}} por {{demandaFmt.feriado_legal_monto_clp}} y Feriado Proporcional de {{demandaFmt.feriado_proporcional_habiles_text}} por {{demandaFmt.feriado_proporcional_monto_clp}}.'
+      );
+
+      const rendered = cleanup(clauses).map(s => renderTpl(s, ctx));
+      return { faltantes: [], clausulas: rendered, flags };
   }
 
   // 3) Motivo -> Despido

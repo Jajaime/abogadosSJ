@@ -2,7 +2,18 @@
 import {
   toUpperCL, toTitleCL, formatFechaLargaISO, formatCLP, formatRut, listaNatural
 } from './formatters';
-import { diffYMD, yearsForIndemnizacion, calcIndemnizacionSimple, calcRecargo30PorCiento } from './labor';
+import { diffYMD, 
+  yearsForIndemnizacion, 
+  calcIndemnizacionSimple, 
+  calcRecargo30PorCiento,
+  diasFeriadoProporcionalHabiles,
+  corridosDesdeHabiles,
+  diasFeriadoProgresivo,
+  montoPorDiasCorridos,
+  diasFeriadoLegalPendientes,
+  diasCorridosFeriadoLegalPendiente,
+  montoFeriadoLegalPendiente,
+ } from './labor';
 
 // Ajusta los nombres de campos a tu DTO real:
 export function decorateDemandaForDocx(d: any) {
@@ -30,6 +41,55 @@ export function decorateDemandaForDocx(d: any) {
     Array.isArray(d?.prestacionesAdeudadas) ? d.prestacionesAdeudadas : [],
     { upper: true, period: true, conjuncion: 'y' }
   );
+
+  // --- FERIAS (solo valores formateados) ---
+  const fechaIni = d?.fechaInicioRelacionLaboral;
+  const fechaFin = d?.fechaTerminoRelaLaboral;
+  const sueldoMensual = Number(d?.remuneracion ?? 0);
+
+  // Reconocidos previos (si no usas, quedará 0)
+  const aniosReconocidosPrevios = Number(d?.aniosReconocidosPrevios ?? 0);
+  // Días hábiles de feriado legal ya tomados en años completos (si no usas, quedará 0)
+  const diasFeriadoLegalTomados = Number(d?.diasFeriadoLegalTomados ?? 0);
+
+  // LEGAL pendiente (hábiles y corridos)
+  const legalPendHabiles = diasFeriadoLegalPendientes(
+    fechaIni,
+    fechaFin,
+    diasFeriadoLegalTomados,
+    aniosReconocidosPrevios
+  );
+  const legalPendCorridos = diasCorridosFeriadoLegalPendiente(
+    fechaFin,
+    legalPendHabiles
+    // , feriadosOpcionales
+  );
+  const legalMonto = montoFeriadoLegalPendiente(
+    fechaFin,
+    legalPendHabiles,
+    sueldoMensual
+    // , feriadosOpcionales
+  );
+
+  // PROPORCIONAL (art. 73): base anual 15 + progresivo vigente
+  const ymdServicio = diffYMD(fechaIni, fechaFin);
+  const totalYearsReconocidos = aniosReconocidosPrevios + ymdServicio.years;
+  const progDias = diasFeriadoProgresivo(totalYearsReconocidos);
+  const diasAnuales = 15 + progDias;
+
+  const propHabiles = diasFeriadoProporcionalHabiles(fechaIni, fechaFin, diasAnuales);
+  const nextDay = fechaFin ? new Date(new Date(fechaFin).getTime() + 24 * 3600 * 1000) : null;
+  const propCorridos = nextDay ? corridosDesdeHabiles(nextDay, propHabiles) : 0;
+  const propMonto = montoPorDiasCorridos(propCorridos, sueldoMensual);
+
+  // Textos formateados
+  const feriadoLegalHabilesText   = `${legalPendHabiles} días hábiles`;
+  const feriadoLegalCorridosText  = `${legalPendCorridos.toFixed(2)} días corridos`;
+  const feriadoLegalMontoCLP      = formatCLP(legalMonto);
+
+  const feriadoPropHabilesText    = `${propHabiles.toFixed(2)} días hábiles`;
+  const feriadoPropCorridosText   = `${propCorridos.toFixed(2)} días corridos`;
+  const feriadoPropMontoCLP       = formatCLP(propMonto);
 
   return {
     // variantes comunes
@@ -75,6 +135,20 @@ export function decorateDemandaForDocx(d: any) {
     // domicilio y otros campos con casing deseado
     domicilioParticular_title: toTitleCL(d?.domicilioParticular),
     domicilioRazonSocial_title: toTitleCL(d?.domicilioRazonSocial),
+
+// FERIAdo LEGAL (solo formateados)
+    feriado_legal_habiles_text: feriadoLegalHabilesText,          // ej: "15 días hábiles"
+    feriado_legal_corridos_text: feriadoLegalCorridosText,        // ej: "21.00 días corridos"
+    feriado_legal_monto_clp: feriadoLegalMontoCLP,                // ej: "$650.000"
+
+    // FERIAdo PROPORCIONAL (solo formateados)
+    feriado_proporcional_habiles_text: feriadoPropHabilesText,    // ej: "10.08 días hábiles"
+    feriado_proporcional_corridos_text: feriadoPropCorridosText,  // ej: "14.08 días corridos"
+    feriado_proporcional_monto_clp: feriadoPropMontoCLP,          // ej: "$305.000"
+
+    // si quieres etiquetas rápidas:
+    feriado_legal_label: 'Feriado legal pendiente',
+    feriado_proporcional_label: 'Feriado proporcional',
 
     // por si quieres conservar los crudos también:
     _raw: d,
