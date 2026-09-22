@@ -46,6 +46,8 @@ model Demanda {
   nombreRazonSocial          String
   rutRazonSocial             String
   domicilioRazonSocial       String
+  representanteLegal         String?
+  runRepresentanteLegal      String?
   fechaInicioRelacionLaboral DateTime?
   naturalezaContrato         String
   funciones                  String

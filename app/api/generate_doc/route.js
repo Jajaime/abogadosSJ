@@ -118,7 +118,7 @@ function buildClausulas(d, ctx = {}) {
     const flags = { isMutuoAcuerdo: true };
     clauses.push(
       '2) Motivo Término -> Mutuo Acuerdo',
-      'Se solicita el pago de los feriados legales y proporcionales pendientes al momento del término de la relación laboral, se solicita el pago Feriado Legal de {{demandaFmt.feriadoLegalHabilesText}} por {{demandaFmt.feriado_legal_monto_clp}} y Feriado Proporcional de {{demandaFmt.feriado_proporcional_habiles_text}} por {{demandaFmt.feriado_proporcional_monto_clp}}.'
+      'Se solicita el pago de los feriados legales y proporcionales pendientes al momento del término de la relación laboral, se solicita el pago Feriado Legal de {{demandaFmt.feriado_legal_habiles_text}} por {{demandaFmt.feriado_legal_monto_clp}} y Feriado Proporcional de {{demandaFmt.feriado_proporcional_habiles_text}} por {{demandaFmt.feriado_proporcional_monto_clp}}.'
     );
 
     const rendered = cleanup(clauses).map(s => renderTpl(s, ctx));

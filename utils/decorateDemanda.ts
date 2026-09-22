@@ -106,6 +106,8 @@ export function decorateDemandaForDocx(d: any) {
     nombreRazonSocial_upper: toUpperCL(d?.nombreRazonSocial),
     rutRazonSocial_fmt: formatRut(d?.rutRazonSocial),
     domicilioRazonSocial_upper: toUpperCL(d?.domicilioRazonSocial),
+    representanteLegal_upper: toUpperCL(d?.representanteLegal),
+    runRepresentanteLegal_fmt: formatRut(d?.runRepresentanteLegal),
     domicilioParticular_upper: toUpperCL(d?.domicilioParticular),
 
     // variantes específicas

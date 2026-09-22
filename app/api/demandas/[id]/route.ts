@@ -35,6 +35,8 @@ const boolNormalize = (v: any): boolean => {
 
 const toResponsePayload = (demanda: any) => ({
   ...demanda,
+  representanteLegal: demanda.representanteLegal ?? '',
+  runRepresentanteLegal: demanda.runRepresentanteLegal ?? '',
   demandadoSols: Array.isArray(demanda.demandadoSolidario)
     ? demanda.demandadoSolidario.map((d: any) => ({
         id: d.id,
@@ -130,6 +132,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     setIfString('nombreRazonSocial', data.nombreRazonSocial);
     setIfString('rutRazonSocial', data.rutRazonSocial);
     setIfString('domicilioRazonSocial', data.domicilioRazonSocial);
+    if (data.representanteLegal !== undefined) {
+      updateData.representanteLegal = data.representanteLegal ? strFrom(data.representanteLegal) : null;
+    }
+    if (data.runRepresentanteLegal !== undefined) {
+      updateData.runRepresentanteLegal = data.runRepresentanteLegal ? strFrom(data.runRepresentanteLegal) : null;
+    }
 
     // Relación laboral
     setIfDate('fechaInicioRelacionLaboral', data.fechaInicioRelacionLaboral);
