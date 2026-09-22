@@ -11,6 +11,12 @@ import { decorateDemandaForDocx, decorateDemandadoSolidarioForDocx } from '@/uti
 import { formatFechaLargaDate } from '@/utils/formatters';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/auth.server';
+import {
+  resolveTerminationCase,
+  validateTerminationCase,
+  buildDemandaDocument,
+  buildTemplateData,
+} from '@/lib/documents/demanda';
 //import { de } from 'zod/v4/locales';
 
 export const runtime = 'nodejs';
@@ -28,6 +34,7 @@ const debug = (...args) => {
     console.debug('[generate_doc]', ...args);
   }
 };
+
 
 /* =========================
    0) Generador de cláusulas
@@ -110,12 +117,12 @@ function buildClausulas(d, ctx = {}) {
   if (motivo === 'mutuo acuerdo' || motivo === 'mutuoacuerdo') {
     const flags = { isMutuoAcuerdo: true };
     clauses.push(
-        '2) Motivo Término -> Mutuo Acuerdo',
-        'Se solicita el pago de los feriados legales y proporcionales pendientes al momento del término de la relación laboral, se solicita el pago Feriado Legal de {{demandaFmt.feriadoLegalHabilesText}} por {{demandaFmt.feriado_legal_monto_clp}} y Feriado Proporcional de {{demandaFmt.feriado_proporcional_habiles_text}} por {{demandaFmt.feriado_proporcional_monto_clp}}.'
-      );
+      '2) Motivo Término -> Mutuo Acuerdo',
+      'Se solicita el pago de los feriados legales y proporcionales pendientes al momento del término de la relación laboral, se solicita el pago Feriado Legal de {{demandaFmt.feriadoLegalHabilesText}} por {{demandaFmt.feriado_legal_monto_clp}} y Feriado Proporcional de {{demandaFmt.feriado_proporcional_habiles_text}} por {{demandaFmt.feriado_proporcional_monto_clp}}.'
+    );
 
-      const rendered = cleanup(clauses).map(s => renderTpl(s, ctx));
-      return { faltantes: [], clausulas: rendered, flags };
+    const rendered = cleanup(clauses).map(s => renderTpl(s, ctx));
+    return { faltantes: [], clausulas: rendered, flags };
   }
 
   // 3) Motivo -> Despido
@@ -469,8 +476,8 @@ function cleanup(list) {
     .map((s) =>
       typeof s === 'string'
         ? s
-            .replace(/[^\S\r\n]+/g, ' ')   // colapsa espacios/tabs, mantiene \r\n
-            .replace(/^[ \t]+|[ \t]+$/g, '') // trim espacios/tabs
+          .replace(/[^\S\r\n]+/g, ' ')   // colapsa espacios/tabs, mantiene \r\n
+          .replace(/^[ \t]+|[ \t]+$/g, '') // trim espacios/tabs
         : ''
     )
     .filter(Boolean)
@@ -684,6 +691,21 @@ export async function POST(request) {
       );
     }
 
+    const caseInfo = resolveTerminationCase(demandaSerializada);
+    const validation = validateTerminationCase(caseInfo, demandaSerializada);
+
+    if (!validation.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Faltan datos obligatorios para las cláusulas legales',
+          detail: `Campos faltantes: ${validation.faltantes.join(', ')}`,
+          code: 'CLAUSULAS_VALIDATION',
+        },
+        { status: 422 }
+      );
+    }
+
     const demandadosSerializados = safeSerializeDemandados(mergedDemandadoSols);
     debug('demandadosSerializados', {
       count: demandadosSerializados.length,
@@ -717,30 +739,34 @@ export async function POST(request) {
       mesAviso: demandaSerializada.mesAviso,
     }, CTX);
 
-    if (faltantes.length > 0) {
+    const docCtx = {
+      fechaEmision: fechaEmisionLarga,
+      demanda: demandaSerializada,
+      demandadoSolidarios: demandadosSerializados,
+      demandaFmt,
+      demandadoSolidariosFmt,
+    };
+
+    const documentBuild = buildDemandaDocument(docCtx);
+
+    if (!documentBuild.ok) {
       return NextResponse.json(
         {
           success: false,
           error: 'Faltan datos obligatorios para las cláusulas legales',
-          detail: `Campos faltantes: ${faltantes.join(', ')}`,
+          detail: `Campos faltantes: ${documentBuild.faltantes.join(', ')}`,
           code: 'CLAUSULAS_VALIDATION',
         },
         { status: 422 }
       );
     }
 
-    // 6) Data para DOCX
-    const templateData = {
-      fechaEmision: fechaEmisionLarga,
-      demanda: demandaSerializada,                 // crudo
-      demandadoSolidarios: demandadosSerializados, // crudo
-      demandaFmt,                                  // formateado
-      demandadoSolidariosFmt,                      // formateado
-      solidarios_inline: solidariosInline(demandadoSolidariosFmt),
+    const templateData = buildTemplateData({
+      ctx: docCtx,
+      clauseResult: documentBuild.clauseResult,
       hasDemandadoSolidarios,
-      clausulas,                                   // <<< arreglo de párrafos (una sola cláusula)
-      ...flags,                                    // <<< booleanos por si quieres IFs en la plantilla
-    };
+      solidariosInline: solidariosInline(demandadoSolidariosFmt),
+    });
 
     // 7) Leer plantilla
     const templatePath = path.resolve(process.cwd(), 'app', 'templates', 'template_demanda.docx');
