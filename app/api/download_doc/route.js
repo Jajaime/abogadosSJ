@@ -1,7 +1,7 @@
 // app/api/download/route.js
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-//import { requireSession } from '@/lib/auth.server';
+import { requirePerm, isElevated } from '@/lib/api-authz';
 // ✅ para elevar permisos si lo necesitas
 
 export const runtime = 'nodejs';
@@ -45,8 +45,8 @@ const byteLength = (val) => {
  *  ──────────────────────────────────────────────────────────────────────────── */
 export async function GET(request) {
   try {
-    //const session = await requireSession();
-    //const roles = session.roles ?? [];
+    const { session, error } = await requirePerm('downloadDoc');
+    if (error) return error;
 
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams.entries());
@@ -60,19 +60,29 @@ export async function GET(request) {
     }
 
     const { demandaId } = parsed.data;
-    //const _isElevated = hasAnyRole(roles, ['admin', 'jefe_estudio']);
 
-    // ⚠️ Política actual: permitir descarga a cualquier usuario autenticado.
-    //    Por eso NO filtramos por usuarioId. Si quieres restringir a dueño excepto roles elevados:
-    //    const where = _isElevated ? { demandaId } : { demandaId, usuarioId: session.userId };
-    const where = { demandaId };
+    const demanda = await prisma.demanda.findUnique({
+      where: { id: demandaId },
+      select: { id: true, usuarioId: true },
+    });
 
-    // Si en tu modelo existen múltiples documentos por demanda,
-    // puedes ordenar por updatedAt desc (si existe) o por id desc.
-    const documento = await prisma.demandaDocumento.findFirst({
-      where,
+    if (!demanda) {
+      return new Response(JSON.stringify({ error: 'Demanda no encontrada' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!isElevated(session.roles) && demanda.usuarioId !== session.userId) {
+      return new Response(JSON.stringify({ error: 'Prohibido' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const documento = await prisma.demandaDocumento.findUnique({
+      where: { demandaId },
       select: { nombre: true, contenido: true, tamano: true },
-      orderBy: { id: 'desc' }, // cambia a { updatedAt: 'desc' } si tu tabla lo tiene
     });
 
     if (!documento) {

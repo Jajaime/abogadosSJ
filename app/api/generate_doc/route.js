@@ -10,7 +10,7 @@ import { safeSerializeDemanda, safeSerializeDemandados } from '@/utils/serialize
 import { decorateDemandaForDocx, decorateDemandadoSolidarioForDocx } from '@/utils/decorateDemanda';
 import { formatFechaLargaDate } from '@/utils/formatters';
 import { prisma } from '@/lib/prisma';
-import { requireSession } from '@/lib/auth.server';
+import { requirePerm, isElevated } from '@/lib/api-authz';
 import {
   resolveTerminationCase,
   validateTerminationCase,
@@ -579,7 +579,9 @@ const requestSchema = z.object({
 
 export async function POST(request) {
   try {
-    const session = await requireSession();
+    const { session, error } = await requirePerm('generateDoc');
+    if (error) return error;
+
     const raw = await request.json();
     const parsed = requestSchema.safeParse(raw);
 
@@ -606,6 +608,10 @@ export async function POST(request) {
 
     if (!demandaDB) {
       return NextResponse.json({ success: false, error: 'Demanda no encontrada' }, { status: 404 });
+    }
+
+    if (!isElevated(session.roles) && demandaDB.usuarioId !== session.userId) {
+      return NextResponse.json({ success: false, error: 'Prohibido' }, { status: 403 });
     }
 
     // 2) Normaliza la fuente desde DB/body
@@ -728,7 +734,7 @@ export async function POST(request) {
     const hasDemandadoSolidarios = demandadoSolidariosFmt.length > 0;
 
     // 5) Cláusulas legales dinámicas (una sola)
-    const { faltantes, clausulas, flags } = buildClausulas({
+    buildClausulas({
       motivoTermino: demandaSerializada.motivoTermino,
       tipoDespido: demandaSerializada.tipoDespido,
       despidoDisciplinario: demandaSerializada.despidoDisciplinario,
@@ -785,33 +791,23 @@ export async function POST(request) {
       );
     }
 
-    // 9) Guardar documento (único por demanda/usuario)
-    const documento = await prisma.$transaction(async (tx) => {
-      const existente = await tx.demandaDocumento.findFirst({
-        where: { demandaId: demandaDB.id, usuarioId: session.userId },
-        select: { id: true },
-      });
-
-      if (existente) {
-        return tx.demandaDocumento.update({
-          where: { id: existente.id },
-          data: {
-            nombre: nombreArchivo,
-            contenido: buffer,
-            tamano: buffer.byteLength,
-          },
-        });
-      }
-
-      return tx.demandaDocumento.create({
-        data: {
-          nombre: nombreArchivo,
-          contenido: buffer,
-          demandaId: demandaDB.id,
-          usuarioId: session.userId,
-          tamano: buffer.byteLength,
-        },
-      });
+    // 9) Un único documento vigente por demanda.
+    // usuarioId identifica a quien realizó la última generación.
+    const documento = await prisma.demandaDocumento.upsert({
+      where: { demandaId: demandaDB.id },
+      update: {
+        nombre: nombreArchivo,
+        contenido: buffer,
+        tamano: buffer.byteLength,
+        usuarioId: session.userId,
+      },
+      create: {
+        nombre: nombreArchivo,
+        contenido: buffer,
+        demandaId: demandaDB.id,
+        usuarioId: session.userId,
+        tamano: buffer.byteLength,
+      },
     });
 
     return NextResponse.json({
