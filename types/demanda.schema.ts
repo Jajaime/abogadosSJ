@@ -13,6 +13,8 @@ export interface DemandaPersistenceData {
   nombreRazonSocial: string;
   rutRazonSocial: string;
   domicilioRazonSocial: string;
+  representanteLegal: string | null;
+  runRepresentanteLegal: string | null;
   fechaInicioRelacionLaboral: Date | null;
   naturalezaContrato: string;
   funciones: string;
@@ -370,6 +372,8 @@ export const toDemandaPersistence = (payload: DemandaPayload) => {
     nombreRazonSocial,
     rutRazonSocial,
     domicilioRazonSocial,
+    representanteLegal: representanteLegal ?? null,
+    runRepresentanteLegal: runRepresentanteLegal ?? null,
     fechaInicioRelacionLaboral: fechaInicioRelacionLaboral ? new Date(fechaInicioRelacionLaboral) : null,
     naturalezaContrato,
     funciones,

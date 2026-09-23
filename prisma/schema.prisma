@@ -46,6 +46,8 @@ model Demanda {
   nombreRazonSocial          String
   rutRazonSocial             String
   domicilioRazonSocial       String
+  representanteLegal         String?
+  runRepresentanteLegal      String?
   fechaInicioRelacionLaboral DateTime?
   naturalezaContrato         String
   funciones                  String
@@ -94,12 +96,10 @@ model DemandaDocumento {
   id         String   @id @default(uuid())
   nombre     String
   contenido  Bytes
-  demandaId  Int
+  demandaId  Int      @unique
   usuarioId  String
   tamano     Int
   demanda    Demanda @relation(fields: [demandaId], references: [id], onDelete: Cascade)
   usuario    Usuario @relation("UsuarioDemandaDocumentos", fields: [usuarioId], references: [id], onDelete: Cascade)
-
-  @@unique([demandaId, usuarioId])
 }
 

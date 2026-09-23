@@ -25,6 +25,8 @@ const mapDemandadoSolidario = (item: any) => ({
 
 const mapDemanda = (demanda: any) => ({
   ...demanda,
+  representanteLegal: demanda.representanteLegal ?? '',
+  runRepresentanteLegal: demanda.runRepresentanteLegal ?? '',
   demandadoSols: Array.isArray(demanda.demandadoSolidario)
     ? demanda.demandadoSolidario.map(mapDemandadoSolidario)
     : [],

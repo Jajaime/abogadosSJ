@@ -346,8 +346,8 @@ const DemandaForm: React.FC = () => {
         // radios a "Sí"/"No"
         setRadioValueRegAsistencia(booleanToString(data.registroAsistencia));
         setRadioValueLiquidacionSueldo(booleanToString(data.liquidacionSueldo));
-        setRadioValueAnosServicio(booleanToString((data as any).pagoAnosServicios ?? data.anosServicios));
-        setRadioValueMesAviso(booleanToString((data as any).pagoMesAviso ?? data.mesAviso));
+        setRadioValueAnosServicio(booleanToString(data.anosServicios));
+        setRadioValueMesAviso(booleanToString(data.mesAviso));
         setRadioValueFiniquito(booleanToString(data.finiquito));
 
         setDemandadoSols(data.demandadoSols ?? []);
@@ -939,6 +939,26 @@ const DemandaForm: React.FC = () => {
             <div className="field col-12 md:col-4">
               <label htmlFor="domicilioRazonSocial">Domicilio</label>
               <InputText id="domicilioRazonSocial" value={formData.domicilioRazonSocial} onChange={(e) => handleChange({ target: { name: 'domicilioRazonSocial', value: e.target.value } })} placeholder="Ingrese domicilio" />
+            </div>
+
+            <div className="field col-12 md:col-4">
+              <label htmlFor="representanteLegal">Representante Legal</label>
+              <InputText
+                id="representanteLegal"
+                value={formData.representanteLegal}
+                onChange={(e) => handleChange({ target: { name: 'representanteLegal', value: e.target.value } })}
+                placeholder="Ingrese representante legal"
+              />
+            </div>
+
+            <div className="field col-12 md:col-4">
+              <label htmlFor="runRepresentanteLegal">RUT Representante Legal</label>
+              <InputText
+                id="runRepresentanteLegal"
+                value={formData.runRepresentanteLegal}
+                onChange={(e) => handleChange({ target: { name: 'runRepresentanteLegal', value: e.target.value } })}
+                placeholder="Ingrese RUT del representante legal"
+              />
             </div>
           </div>
         </div>

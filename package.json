@@ -18,14 +18,14 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@prisma/client": "^6.16.1",
+    "@prisma/client": "^6.19.3",
     "@types/react": "18.2.12",
     "@types/react-dom": "18.2.5",
     "bcryptjs": "^2.4.3",
     "chart.js": "4.2.1",
     "docx-templates": "^4.14.1",
     "jose": "^5.2.4",
-    "next": "^16.2.3",
+    "next": "^16.3.3",
     "postcss": "^8.5.3",
     "primeflex": "^3.3.1",
     "primeicons": "^6.0.1",
@@ -37,7 +37,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.37.0",
-    "@next/eslint-plugin-next": "^16.2.3",
+    "@next/eslint-plugin-next": "^16.3.3",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^24.3.0",
     "@typescript-eslint/eslint-plugin": "^8.46.1",
@@ -48,12 +48,16 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-unused-imports": "^4.2.0",
     "prettier": "^2.8.8",
-    "prisma": "^6.16.1",
+    "prisma": "^6.19.3",
     "sass": "^1.63.4",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.46.1",
-    "vitest": "^1.6.0"
+    "vite": "^6.4.3",
+    "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.1"
   }
 }

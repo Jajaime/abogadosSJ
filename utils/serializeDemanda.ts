@@ -118,6 +118,8 @@ export function safeSerializeDemanda(d: DemandaDTO) {
     nombreRazonSocial: d.nombreRazonSocial ?? '',
     rutRazonSocial: d.rutRazonSocial ?? '',
     domicilioRazonSocial: d.domicilioRazonSocial ?? '',
+    representanteLegal: d.representanteLegal ?? '',
+    runRepresentanteLegal: d.runRepresentanteLegal ?? '',
     fechaInicioRelacionLaboral: finicioISO,
     naturalezaContrato: d.naturalezaContrato ?? '',
     funciones: d.funciones ?? '',

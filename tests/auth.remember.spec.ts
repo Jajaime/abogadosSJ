@@ -31,7 +31,7 @@ const mockDb: {
   sessions: new Map(),
 };
 
-vi.mock('server-only', () => ({}), { virtual: true });
+vi.mock('server-only', () => ({}));
 
 const cloneWithSelect = <T extends Record<string, any>>(
   entity: T | undefined,
