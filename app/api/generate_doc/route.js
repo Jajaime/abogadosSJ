@@ -724,26 +724,8 @@ export async function POST(request) {
       decorateDemandadoSolidarioForDocx
     );
 
-    const CTX = {
-      demanda: demandaSerializada, // crudo
-      demandaFmt,                  // formateado (tiene remuneracion_clp, run_fmt, ... )
-      flags: {},                   // será sobreescrito por buildClausulas si quieres
-    };
-
     const fechaEmisionLarga = formatFechaLargaDate(new Date());
     const hasDemandadoSolidarios = demandadoSolidariosFmt.length > 0;
-
-    // 5) Cláusulas legales dinámicas (una sola)
-    buildClausulas({
-      motivoTermino: demandaSerializada.motivoTermino,
-      tipoDespido: demandaSerializada.tipoDespido,
-      despidoDisciplinario: demandaSerializada.despidoDisciplinario,
-      otroDespidoDisciplinario: demandaSerializada.otroDespidoDisciplinario,
-      fechaTerminoRelaLaboral: demandaSerializada.fechaTerminoRelaLaboral,
-      // nuevos (para Necesidades de la Empresa)
-      anosServicios: demandaSerializada.anosServicios,
-      mesAviso: demandaSerializada.mesAviso,
-    }, CTX);
 
     const docCtx = {
       fechaEmision: fechaEmisionLarga,
