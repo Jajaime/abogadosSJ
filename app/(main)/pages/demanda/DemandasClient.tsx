@@ -14,7 +14,6 @@ import { InputText } from 'primereact/inputtext';
 import { Toast } from 'primereact/toast';
 import { Toolbar } from 'primereact/toolbar';
 import { FilterMatchMode } from 'primereact/api';
-import { safeSerializeDemanda, safeSerializeDemandados } from '@/utils/serializeDemanda';
 
 export default function DemandasPage() {
     const router = useRouter();
@@ -93,20 +92,11 @@ export default function DemandasPage() {
         try {
             setGeneratingDoc(d.id);
 
-            const demandaPayload = safeSerializeDemanda(d);
-            const demandadosPayload = safeSerializeDemandados(d.demandadoSols ?? []);
-
             const response = await apiFetch('/api/generate_doc', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    // Mantén el ID (fuente de verdad del backend si luego quieres volver a cargar desde DB)
-                    demandaId: d.id,
-                    // Nombre archivo
-                    nombreArchivo: `Documento_${d.run}_${new Date().toISOString().slice(0, 10)}.docx`,
-                    // Pasa TODO tu DTO serializado:
-                    demanda: demandaPayload,
-                    demandadoSolidarios: demandadosPayload // <- arreglo
+                    demandaId: d.id
                 })
             });
 

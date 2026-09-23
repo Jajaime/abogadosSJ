@@ -22,11 +22,19 @@ import {
 export const runtime = 'nodejs';
 
 const MAX_DOCUMENT_SIZE = 2 * 1024 * 1024; // 2MB
-const SAFE_FILENAME_REGEX = /^[^<>:"/\\|?*\r\n]+$/;
-const numberOrNull = (value) => {
-  if (value === null || value === undefined || value === '') return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
+const sanitizeFilenamePart = (value) =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+const buildDocumentFilename = (demanda) => {
+  const personName = sanitizeFilenamePart(
+    [demanda?.nombres, demanda?.apPaterno].filter(Boolean).join(' ')
+  ).slice(0, 120) || 'Sin_Nombre';
+
+  return `Demanda_${demanda.id}_${personName}.docx`;
 };
 
 const debug = (...args) => {
@@ -51,6 +59,7 @@ const norm = (s) =>
  * Construye UNA cláusula legal según motivo/tipo/subcausal.
  * Devuelve { faltantes: string[], clausulas: string[], flags: Record<string, boolean> }
  */
+// eslint-disable-next-line no-unused-vars -- temporal hasta completar la migración de Fase 4
 function buildClausulas(d, ctx = {}) {
   const falta = [];
   const clauses = [];
@@ -501,63 +510,6 @@ function renderTpl(str, ctx) {
    1) Schemas y handler
    ========================= */
 
-const demandadoSolidarioSchema = z
-  .object({
-    id: z.string().trim().optional(),
-    nombreRazonSocial: z.string().trim().max(255).optional(),
-    rut: z.string().trim().max(30).optional(),
-    domicilio: z.string().trim().max(255).optional(),
-    representanteLegal: z.string().trim().max(255).optional(),
-    runRepresentanteLegal: z.string().trim().max(30).optional(),
-  })
-  .strip();
-
-const demandaSchema = z
-  .object({
-    id: z.string().optional(),
-    nombres: z.string().trim().optional(),
-    apPaterno: z.string().trim().optional(),
-    apMaterno: z.string().trim().optional(),
-    run: z.string().trim().optional(),
-    fechaNacimiento: z.union([z.string(), z.date()]).optional(),
-    nacionalidad: z.union([z.string(), z.object({ name: z.string(), code: z.string().optional() })]).optional(),
-    correoElectronico: z.string().trim().max(320).optional(),
-    estadoCivil: z.union([z.string(), z.object({ name: z.string(), code: z.string().optional() })]).optional(),
-    domicilioParticular: z.string().trim().optional(),
-    demandadoSols: z.array(demandadoSolidarioSchema).optional(),
-    nombreRazonSocial: z.string().trim().optional(),
-    rutRazonSocial: z.string().trim().optional(),
-    domicilioRazonSocial: z.string().trim().optional(),
-    representanteLegal: z.string().trim().optional(),
-    runRepresentanteLegal: z.string().trim().optional(),
-    fechaInicioRelacionLaboral: z.union([z.string(), z.date()]).optional(),
-    naturalezaContrato: z.string().trim().optional(),
-    funciones: z.string().trim().optional(),
-    lugar: z.string().trim().optional(),
-    jornada: z.string().trim().optional(),
-    otraJornada: z.string().trim().optional(),
-    registroAsistencia: z.boolean().optional(),
-    remuneracion: z.union([z.number(), z.string()]).optional(),
-    formaPago: z.string().trim().optional(),
-    liquidacionSueldo: z.boolean().optional(),
-    cotizacionSalud: z.array(z.string().trim()).optional(),
-    cotizacionAfp: z.array(z.string().trim()).optional(),
-    cotizacionAfc: z.array(z.string().trim()).optional(),
-    vacaciones: z.union([z.number(), z.string()]).optional(),
-    fuero: z.string().trim().optional(),
-    fechaTerminoRelaLaboral: z.union([z.string(), z.date()]).optional(),
-    motivoTermino: z.string().trim().optional(),
-    tipoDespido: z.string().trim().optional(),
-    despidoDisciplinario: z.string().trim().optional(),
-    otroDespidoDisciplinario: z.string().trim().optional(),
-    anosServicios: z.boolean().optional(),
-    mesAviso: z.boolean().optional(),
-    finiquito: z.boolean().optional(),
-    prestacionesAdeudadas: z.array(z.string().trim()).optional(),
-    materias: z.array(z.string().trim()).optional(),
-  })
-  .passthrough();
-
 const requestSchema = z.object({
   demandaId: z.preprocess((value) => {
     if (typeof value === 'string') {
@@ -567,14 +519,6 @@ const requestSchema = z.object({
     }
     return value;
   }, z.number().int().positive()),
-  nombreArchivo: z
-    .string()
-    .trim()
-    .min(1, 'nombreArchivo requerido')
-    .max(255)
-    .regex(SAFE_FILENAME_REGEX, 'nombreArchivo contiene caracteres no permitidos'),
-  demandadoSolidarios: z.array(demandadoSolidarioSchema).optional(),
-  demanda: demandaSchema.optional(),
 });
 
 export async function POST(request) {
@@ -594,15 +538,13 @@ export async function POST(request) {
       );
     }
 
-    const { demandaId, nombreArchivo, demandadoSolidarios: bodyDemandados, demanda } = parsed.data;
+    const { demandaId } = parsed.data;
 
     // 1) Buscar en DB
-    const demandaDB = await prisma.demanda.findFirst({
-      where: {
-        id: demandaId,
-      },
+    const demandaDB = await prisma.demanda.findUnique({
+      where: { id: demandaId },
       include: {
-        demandadoSolidario: true, // cámbialo al nombre exacto de tu relación
+        demandadoSolidario: true,
       },
     });
 
@@ -614,74 +556,19 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Prohibido' }, { status: 403 });
     }
 
-    // 2) Normaliza la fuente desde DB/body
-    const demandadoSolidariosDB = Array.isArray(demandaDB.demandadoSolidario) ? demandaDB.demandadoSolidario : [];
-    const bodySolidarios = Array.isArray(bodyDemandados) ? bodyDemandados : [];
-    const sourceSolidarios = bodySolidarios.length > 0 ? bodySolidarios : demandadoSolidariosDB;
+    // 2) PostgreSQL es la única fuente de datos del documento.
+    const demandadoSolidariosDB = Array.isArray(demandaDB.demandadoSolidario)
+      ? demandaDB.demandadoSolidario
+      : [];
 
-    const baseDemanda = {
-      nombres: demandaDB.nombres ?? '',
-      apPaterno: demandaDB.apPaterno ?? '',
-      apMaterno: demandaDB.apMaterno ?? '',
-      run: demandaDB.run ?? '',
-      fechaNacimiento: demandaDB.fechaNacimiento ? new Date(demandaDB.fechaNacimiento).toISOString() : '',
-      nacionalidad: demandaDB?.nacionalidad ?? '',
-      correoElectronico: demandaDB.correoElectronico ?? '',
-      estadoCivil: demandaDB?.estadoCivil ?? '',
-      domicilioParticular: demandaDB.domicilioParticular ?? '',
-      demandadoSols: sourceSolidarios,
-      nombreRazonSocial: demandaDB?.nombreRazonSocial ?? '',
-      rutRazonSocial: demandaDB?.rutRazonSocial ?? '',
-      domicilioRazonSocial: demandaDB?.domicilioRazonSocial ?? '',
-      representanteLegal: demandaDB?.representanteLegal ?? '',
-      runRepresentanteLegal: demandaDB?.runRepresentanteLegal ?? '',
-      fechaInicioRelacionLaboral: demandaDB?.fechaInicioRelacionLaboral
-        ? new Date(demandaDB.fechaInicioRelacionLaboral).toISOString()
-        : '',
-      naturalezaContrato: demandaDB?.naturalezaContrato ?? '',
-      funciones: demandaDB?.funciones ?? '',
-      lugar: demandaDB?.lugar ?? '',
-      jornada: demandaDB?.jornada ?? '',
-      otraJornada: demandaDB?.otraJornada ?? '',
-      registroAsistencia: !!demandaDB?.registroAsistencia,
-      remuneracion: numberOrNull(demandaDB?.remuneracion),
-      formaPago: demandaDB?.formaPago ?? '',
-      liquidacionSueldo: !!demandaDB?.liquidacionSueldo,
-      cotizacionSalud: demandaDB?.cotizacionSalud ?? '',
-      cotizacionAfp: demandaDB?.cotizacionAfp ?? '',
-      cotizacionAfc: demandaDB?.cotizacionAfc ?? '',
-      vacaciones: numberOrNull(demandaDB?.vacaciones),
-      fuero: demandaDB?.fuero ?? '',
-      fechaTerminoRelaLaboral: demandaDB?.fechaTerminoRelaLaboral
-        ? new Date(demandaDB.fechaTerminoRelaLaboral).toISOString()
-        : '',
-      motivoTermino: demandaDB?.motivoTermino ?? '',
-      tipoDespido: demandaDB?.tipoDespido ?? '',
-      despidoDisciplinario: demandaDB?.despidoDisciplinario ?? '',
-      otroDespidoDisciplinario: demandaDB?.otroDespidoDisciplinario ?? '',
-      anosServicios: typeof demandaDB?.anosServicios === 'boolean' ? demandaDB.anosServicios : undefined,
-      mesAviso: typeof demandaDB?.mesAviso === 'boolean' ? demandaDB.mesAviso : undefined,
-      finiquito: !!demandaDB?.finiquito,
-      prestacionesAdeudadas: Array.isArray(demandaDB?.prestacionesAdeudadas) ? demandaDB.prestacionesAdeudadas : [],
-      materias: Array.isArray(demandaDB?.materias) ? demandaDB.materias : [],
-    };
+    const demandaSerializada = safeSerializeDemanda({
+      ...demandaDB,
+      demandadoSols: demandadoSolidariosDB,
+    });
 
-    const demandaOverride = demanda ? { ...demanda } : undefined;
-    const overrideSolidarios = demandaOverride?.demandadoSols;
-    const mergedDemandadoSols = Array.isArray(overrideSolidarios) ? overrideSolidarios : sourceSolidarios;
+    const nombreArchivo = buildDocumentFilename(demandaDB);
 
-    const cleanedOverride = demandaOverride
-      ? Object.fromEntries(
-        Object.entries(demandaOverride).filter(([key, value]) => key !== 'demandadoSols' && value !== undefined)
-      )
-      : undefined;
-
-    const demandaMerged = cleanedOverride
-      ? { ...baseDemanda, ...cleanedOverride, demandadoSols: mergedDemandadoSols }
-      : { ...baseDemanda, demandadoSols: mergedDemandadoSols };
-
-    // 3) Serializa + valida campos base
-    const demandaSerializada = safeSerializeDemanda(demandaMerged);
+    // 3) Validar campos base provenientes de PostgreSQL.
     const missingBaseFields = ['nombres', 'apPaterno', 'apMaterno', 'run', 'nombreRazonSocial', 'rutRazonSocial'].filter(
       (field) => !demandaSerializada[field]
     );
@@ -712,10 +599,9 @@ export async function POST(request) {
       );
     }
 
-    const demandadosSerializados = safeSerializeDemandados(mergedDemandadoSols);
+    const demandadosSerializados = safeSerializeDemandados(demandadoSolidariosDB);
     debug('demandadosSerializados', {
       count: demandadosSerializados.length,
-      overriddenByBody: Array.isArray(bodyDemandados) && bodyDemandados.length > 0,
     });
 
     // 4) Data formateada para la plantilla
