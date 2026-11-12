@@ -139,6 +139,44 @@ describe('buildDemandaDocument matrix', () => {
     expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$900.000');
   });
 
+  it('construye Sin Causa con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Sin Causa',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_SIN_CAUSA,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_SIN_CAUSA,
+        flags: {
+          isDespido: true,
+          isSinCausa: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain('in causado');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
   it('construye Incumplimiento Grave con el builder disciplinario implementado', () => {
     const result = buildDemandaDocument(
       makeCtx(
@@ -173,14 +211,6 @@ describe('buildDemandaDocument matrix', () => {
   });
 
   const principalNotImplemented = [
-    [
-      'Sin Causa',
-      {
-        motivoTermino: 'Despido',
-        tipoDespido: 'Sin Causa',
-      },
-      CASE_KEYS.DESPIDO_SIN_CAUSA,
-    ],
     [
       'Término de Plazo',
       {
