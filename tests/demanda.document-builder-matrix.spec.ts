@@ -215,6 +215,46 @@ describe('buildDemandaDocument matrix', () => {
     expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
   });
 
+  it('construye Término de Obra o Faena con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Término de Obra o Faena',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_TERMINO_OBRA_FAENA,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_TERMINO_OBRA_FAENA,
+        flags: {
+          isDespido: true,
+          isTerminoObra: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain(
+      'continúa la obra o faena'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
   it('construye Incumplimiento Grave con el builder disciplinario implementado', () => {
     const result = buildDemandaDocument(
       makeCtx(
@@ -247,33 +287,6 @@ describe('buildDemandaDocument matrix', () => {
       },
     });
   });
-
-  const principalNotImplemented = [
-    [
-      'Término de Obra o Faena',
-      {
-        motivoTermino: 'Despido',
-        tipoDespido: 'Término de Obra o Faena',
-      },
-      CASE_KEYS.DESPIDO_TERMINO_OBRA_FAENA,
-    ],
-  ] as const;
-
-  for (const [label, demanda, expectedCaseKey] of principalNotImplemented) {
-    it(`rechaza ${label} mientras su builder no esté implementado`, () => {
-      const result = buildDemandaDocument(makeCtx(demanda));
-
-      expect(result).toMatchObject({
-        ok: false,
-        code: 'DOCUMENT_CASE_NOT_IMPLEMENTED',
-        faltantes: [],
-        caseInfo: {
-          caseKey: expectedCaseKey,
-        },
-        clauseResult: null,
-      });
-    });
-  }
 
   const disciplinaryNotImplemented = [
     ['Ausencia Injustificadas', DISCIPLINARY_KEYS.AUSENCIAS_INJUSTIFICADAS],

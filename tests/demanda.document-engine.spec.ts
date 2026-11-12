@@ -8,7 +8,7 @@ const makeCtx = (demanda: Record<string, unknown>) => ({
 });
 
 describe('buildDemandaDocument', () => {
-  it('rechaza un caso principal reconocido pero aún no implementado', () => {
+  it('mantiene operativo el último caso principal migrado', () => {
     const result = buildDemandaDocument(
       makeCtx({
         motivoTermino: 'Despido',
@@ -17,12 +17,13 @@ describe('buildDemandaDocument', () => {
     );
 
     expect(result).toMatchObject({
-      ok: false,
-      code: 'DOCUMENT_CASE_NOT_IMPLEMENTED',
+      ok: true,
       caseInfo: {
         caseKey: 'despido.terminoObraFaena',
       },
-      clauseResult: null,
+      clauseResult: {
+        caseKey: 'despido.terminoObraFaena',
+      },
     });
   });
 
