@@ -11,7 +11,8 @@ describe('buildDemandaDocument', () => {
   it('rechaza un caso principal reconocido pero aún no implementado', () => {
     const result = buildDemandaDocument(
       makeCtx({
-        motivoTermino: 'Autodespido',
+        motivoTermino: 'Despido',
+        tipoDespido: 'Sin Causa',
       })
     );
 
@@ -19,7 +20,7 @@ describe('buildDemandaDocument', () => {
       ok: false,
       code: 'DOCUMENT_CASE_NOT_IMPLEMENTED',
       caseInfo: {
-        caseKey: 'motivo.autoDespido',
+        caseKey: 'despido.sinCausa',
       },
       clauseResult: null,
     });

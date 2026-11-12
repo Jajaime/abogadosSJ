@@ -65,6 +65,42 @@ describe('buildDemandaDocument matrix', () => {
     expect(result.clauseResult?.sections.hechos.join(' ')).toContain('$50.000');
   });
 
+  it('construye Autodespido con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Autodespido',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.AUTO_DESPIDO,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.AUTO_DESPIDO,
+        flags: {
+          isAutoDespido: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain('artículo 171');
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
   it('construye Incumplimiento Grave con el builder disciplinario implementado', () => {
     const result = buildDemandaDocument(
       makeCtx(
@@ -99,7 +135,6 @@ describe('buildDemandaDocument matrix', () => {
   });
 
   const principalNotImplemented = [
-    ['Autodespido', { motivoTermino: 'Autodespido' }, CASE_KEYS.AUTO_DESPIDO],
     [
       'Necesidades de la Empresa',
       {
