@@ -12,7 +12,7 @@ describe('buildDemandaDocument', () => {
     const result = buildDemandaDocument(
       makeCtx({
         motivoTermino: 'Despido',
-        tipoDespido: 'Término de Plazo',
+        tipoDespido: 'Término de Obra o Faena',
       })
     );
 
@@ -20,7 +20,7 @@ describe('buildDemandaDocument', () => {
       ok: false,
       code: 'DOCUMENT_CASE_NOT_IMPLEMENTED',
       caseInfo: {
-        caseKey: 'despido.terminoPlazo',
+        caseKey: 'despido.terminoObraFaena',
       },
       clauseResult: null,
     });
