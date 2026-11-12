@@ -101,6 +101,44 @@ describe('buildDemandaDocument matrix', () => {
     expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
   });
 
+  it('construye Necesidades de la Empresa con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Necesidades de la Empresa',
+          anosServicios: false,
+          mesAviso: false,
+        },
+        {
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+          indemnizacion_recargo30_clp: '$900.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_NECESIDADES_EMPRESA,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_NECESIDADES_EMPRESA,
+        flags: {
+          isDespido: true,
+          isNecesidadesEmpresa: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain('artículo 161');
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain('Rol N° 119.179-2020');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$900.000');
+  });
+
   it('construye Incumplimiento Grave con el builder disciplinario implementado', () => {
     const result = buildDemandaDocument(
       makeCtx(
@@ -135,16 +173,6 @@ describe('buildDemandaDocument matrix', () => {
   });
 
   const principalNotImplemented = [
-    [
-      'Necesidades de la Empresa',
-      {
-        motivoTermino: 'Despido',
-        tipoDespido: 'Necesidades de la Empresa',
-        anosServicios: false,
-        mesAviso: false,
-      },
-      CASE_KEYS.DESPIDO_NECESIDADES_EMPRESA,
-    ],
     [
       'Sin Causa',
       {
