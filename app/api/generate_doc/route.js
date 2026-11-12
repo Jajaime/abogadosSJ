@@ -624,12 +624,24 @@ export async function POST(request) {
     const documentBuild = buildDemandaDocument(docCtx);
 
     if (!documentBuild.ok) {
+      if (documentBuild.code === 'DOCUMENT_CASE_NOT_IMPLEMENTED') {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Caso documental no implementado',
+            detail: documentBuild.detail,
+            code: documentBuild.code,
+          },
+          { status: 422 }
+        );
+      }
+
       return NextResponse.json(
         {
           success: false,
           error: 'Faltan datos obligatorios para las cláusulas legales',
           detail: `Campos faltantes: ${documentBuild.faltantes.join(', ')}`,
-          code: 'CLAUSULAS_VALIDATION',
+          code: documentBuild.code ?? 'CLAUSULAS_VALIDATION',
         },
         { status: 422 }
       );
