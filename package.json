@@ -54,8 +54,8 @@
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.46.1",
-    "vite": "^6.4.3",
-    "vitest": "^4.1.11"
+    "vite": "^6.4.6",
+    "vitest": "^4.1.12"
   },
   "overrides": {
     "deepmerge-ts": "^8.0.1"
