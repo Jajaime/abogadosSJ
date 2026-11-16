@@ -41,8 +41,8 @@ jobs:
       - name: Automated tests
         run: npm test
 
-      - name: Production dependency audit
-        run: npm audit --omit=dev --audit-level=high
+      - name: Full dependency audit
+        run: npm audit --audit-level=low
 
       - name: Prepare isolated CI environment
         shell: bash
