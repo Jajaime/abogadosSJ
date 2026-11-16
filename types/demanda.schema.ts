@@ -157,7 +157,7 @@ const optionalBooleanField = (field: string) =>
 
 const requiredISODate = (field: string) =>
   z
-    .union([z.string(), z.date()], { invalid_type_error: `El campo '${field}' es obligatorio.` })
+    .union([z.string(), z.date()], { error: `El campo '${field}' es obligatorio.` })
     .transform((value, ctx) => {
       const raw = value instanceof Date ? value.toISOString() : sanitizeText(String(value));
       if (!raw) {
@@ -185,7 +185,7 @@ const optionalISODate = (field: string) =>
         return z.NEVER;
       }
       return parsed.toISOString();
-    });
+    }).default(null);
 
 const optionalPositiveNumber = (field: string, { max } = { max: 1_000_000_000 }) =>
   z
@@ -207,7 +207,7 @@ const optionalPositiveNumber = (field: string, { max } = { max: 1_000_000_000 })
         return z.NEVER;
       }
       return Math.round(normalized);
-    });
+    }).default(null);
 
 const stringArray = (field: string, { maxItems = 50, maxLength = 120 } = {}) =>
   z
@@ -273,15 +273,15 @@ export const demandaPayloadSchema = z
     cotizacionSalud: z.union([
       stringArray('cotizacionSalud', { maxItems: 50 }),
       z.undefined(),
-    ]).transform((value) => value ?? []),
+    ]).transform((value) => value ?? []).default([]),
     cotizacionAfp: z.union([
       stringArray('cotizacionAfp', { maxItems: 50 }),
       z.undefined(),
-    ]).transform((value) => value ?? []),
+    ]).transform((value) => value ?? []).default([]),
     cotizacionAfc: z.union([
       stringArray('cotizacionAfc', { maxItems: 50 }),
       z.undefined(),
-    ]).transform((value) => value ?? []),
+    ]).transform((value) => value ?? []).default([]),
     vacaciones: optionalPositiveNumber('vacaciones', { max: 365 }),
     fuero: requiredString('fuero', 120),
 
@@ -298,10 +298,10 @@ export const demandaPayloadSchema = z
     prestacionesAdeudadas: z.union([
       stringArray('prestacionesAdeudadas', { maxItems: 25 }),
       z.undefined(),
-    ]).transform((value) => value ?? []),
+    ]).transform((value) => value ?? []).default([]),
     materias: z
       .union([stringArray('materias', { maxItems: 50 }), z.undefined()])
-      .transform((value) => value ?? []),
+      .transform((value) => value ?? []).default([]),
 
     demandadoSols: z
       .array(demandadoSolSchema)
