@@ -24,7 +24,7 @@ services:
       NODE_ENV: development
       NEXT_TELEMETRY_DISABLED: "1"
     ports:
-      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:3003:3000"
     volumes:
       - .:/workspace
       - node_modules:/workspace/node_modules
