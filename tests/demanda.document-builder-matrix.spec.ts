@@ -464,8 +464,51 @@ describe('buildDemandaDocument matrix', () => {
     expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
   });
 
+  it('construye Negociación Incompatible con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Negociación Incompatible',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.NEGOCIACION_INCOMPATIBLE,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.NEGOCIACION_INCOMPATIBLE,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isNegociacionIncompatible: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      'niego todas las imputaciones'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
   const disciplinaryNotImplemented = [
-    ['Negociación Incompatible', DISCIPLINARY_KEYS.NEGOCIACION_INCOMPATIBLE],
     ['Actos o Imprudencia Temeraria', DISCIPLINARY_KEYS.ACTOS_IMPRUDENCIA_TEMERARIA],
     ['Abandono de Trabajo', DISCIPLINARY_KEYS.ABANDONO_TRABAJO],
     ['Falta de Probidad', DISCIPLINARY_KEYS.FALTA_DE_PROBIDAD],
