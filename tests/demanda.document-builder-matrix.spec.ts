@@ -31,6 +31,13 @@ describe('buildDemandaDocument matrix', () => {
         },
       },
     });
+
+    expect(result.clauseResult?.sections.encabezado).toEqual([
+      '1) Motivo Término -> Renuncia',
+    ]);
+    expect(result.clauseResult?.sections.hechos).toEqual([
+      'Solo genera el pago del feriado legal o proporcional.',
+    ]);
   });
 
   it('construye Mutuo Acuerdo con su builder implementado', () => {
