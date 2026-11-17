@@ -32,7 +32,7 @@ describe('buildDemandaDocument', () => {
       makeCtx({
         motivoTermino: 'Despido',
         tipoDespido: 'Disciplinario',
-        despidoDisciplinario: 'Actos o Imprudencia Temeraria',
+        despidoDisciplinario: 'Abandono de Trabajo',
       })
     );
 
@@ -41,7 +41,7 @@ describe('buildDemandaDocument', () => {
       code: 'DOCUMENT_CASE_NOT_IMPLEMENTED',
       caseInfo: {
         caseKey: 'despido.disciplinario',
-        subKey: 'actos o imprudencia temeraria',
+        subKey: 'abandono de trabajo',
       },
       clauseResult: null,
     });
