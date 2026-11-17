@@ -68,8 +68,12 @@ describe('buildDemandaDocument matrix', () => {
       },
     });
 
-    expect(result.clauseResult?.sections.hechos.join(' ')).toContain('$100.000');
-    expect(result.clauseResult?.sections.hechos.join(' ')).toContain('$50.000');
+    expect(result.clauseResult?.sections.encabezado).toEqual([
+      '2) Motivo Término -> Mutuo Acuerdo',
+    ]);
+    expect(result.clauseResult?.sections.hechos).toEqual([
+      'Se solicita el pago de los feriados legales y proporcionales pendientes al momento del término de la relación laboral, se solicita el pago Feriado Legal de 10 días por $100.000 y Feriado Proporcional de 5 días por $50.000.',
+    ]);
   });
 
   it('construye Autodespido con el texto jurídico migrado', () => {
