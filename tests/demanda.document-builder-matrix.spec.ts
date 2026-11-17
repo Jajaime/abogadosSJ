@@ -288,8 +288,51 @@ describe('buildDemandaDocument matrix', () => {
     });
   });
 
+  it('construye Ausencia Injustificadas con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Ausencia Injustificadas',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.AUSENCIAS_INJUSTIFICADAS,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.AUSENCIAS_INJUSTIFICADAS,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isAusenciasInjustificadas: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain(
+      '26 de septiembre de 2025'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
   const disciplinaryNotImplemented = [
-    ['Ausencia Injustificadas', DISCIPLINARY_KEYS.AUSENCIAS_INJUSTIFICADAS],
     ['Acoso Sexual', DISCIPLINARY_KEYS.ACOSO_SEXUAL],
     ['Acoso Laboral', DISCIPLINARY_KEYS.ACOSO_LABORAL],
     ['Injurias', DISCIPLINARY_KEYS.INJURIAS],
