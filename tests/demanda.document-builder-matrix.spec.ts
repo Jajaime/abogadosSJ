@@ -376,8 +376,51 @@ describe('buildDemandaDocument matrix', () => {
     expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
   });
 
+  it('construye Acoso Laboral con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Acoso Laboral',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.ACOSO_LABORAL,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.ACOSO_LABORAL,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isAcosoLaboral: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      'niego todas las imputaciones'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
   const disciplinaryNotImplemented = [
-    ['Acoso Laboral', DISCIPLINARY_KEYS.ACOSO_LABORAL],
     ['Injurias', DISCIPLINARY_KEYS.INJURIAS],
     ['Negociación Incompatible', DISCIPLINARY_KEYS.NEGOCIACION_INCOMPATIBLE],
     ['Actos o Imprudencia Temeraria', DISCIPLINARY_KEYS.ACTOS_IMPRUDENCIA_TEMERARIA],

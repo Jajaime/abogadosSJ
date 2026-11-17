@@ -32,7 +32,7 @@ describe('buildDemandaDocument', () => {
       makeCtx({
         motivoTermino: 'Despido',
         tipoDespido: 'Disciplinario',
-        despidoDisciplinario: 'Acoso laboral',
+        despidoDisciplinario: 'Injurias',
       })
     );
 
@@ -41,7 +41,7 @@ describe('buildDemandaDocument', () => {
       code: 'DOCUMENT_CASE_NOT_IMPLEMENTED',
       caseInfo: {
         caseKey: 'despido.disciplinario',
-        subKey: 'acoso laboral',
+        subKey: 'injurias',
       },
       clauseResult: null,
     });
