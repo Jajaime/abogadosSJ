@@ -32,7 +32,8 @@ describe('buildDemandaDocument', () => {
       makeCtx({
         motivoTermino: 'Despido',
         tipoDespido: 'Disciplinario',
-        despidoDisciplinario: 'Falta de Probidad',
+        despidoDisciplinario: 'Otros Especificar',
+        otroDespidoDisciplinario: 'Detalle informado',
       })
     );
 
@@ -41,7 +42,7 @@ describe('buildDemandaDocument', () => {
       code: 'DOCUMENT_CASE_NOT_IMPLEMENTED',
       caseInfo: {
         caseKey: 'despido.disciplinario',
-        subKey: 'falta de probidad',
+        subKey: 'otros especificar',
       },
       clauseResult: null,
     });

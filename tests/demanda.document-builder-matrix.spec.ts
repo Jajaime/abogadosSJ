@@ -596,8 +596,51 @@ describe('buildDemandaDocument matrix', () => {
     expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
   });
 
+  it('construye Falta de Probidad con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Falta de Probidad',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.FALTA_DE_PROBIDAD,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.FALTA_DE_PROBIDAD,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isFaltaProbidad: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      'niego todas las imputaciones'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
   const disciplinaryNotImplemented = [
-    ['Falta de Probidad', DISCIPLINARY_KEYS.FALTA_DE_PROBIDAD],
     ['Otros Especificar', DISCIPLINARY_KEYS.OTROS_ESPECIFICAR],
   ] as const;
 
