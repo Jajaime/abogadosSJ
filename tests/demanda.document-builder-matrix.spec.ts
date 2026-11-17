@@ -273,8 +273,10 @@ describe('buildDemandaDocument matrix', () => {
           motivoTermino: 'Despido',
           tipoDespido: 'Disciplinario',
           despidoDisciplinario: 'Incumplimiento Grave',
+          fechaTerminoRelaLaboral: '2026-11-12',
         },
         {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
           remuneracion_clp: '$1.000.000',
           indemnizacion_monto_clp: '$3.000.000',
         }
@@ -297,6 +299,33 @@ describe('buildDemandaDocument matrix', () => {
         },
       },
     });
+
+    expect(result.clauseResult?.sections.encabezado).toEqual([
+      '3) Motivo Término -> Despido',
+      'a) Tipo Despido -> Disciplinario',
+      '1) Disciplinario -> Incumplimiento Grave',
+      'Incumplimiento Grave',
+    ]);
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain(
+      '26 de septiembre de 2025'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain(
+      'pago del bono trimestral'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain(
+      'La Corte Suprema sobre el presente ha indicado'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain(
+      'Artículo 168 del Código del Trabajo'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain(
+      'a si el despido'
+    );
   });
 
   it('construye Ausencia Injustificadas con el texto jurídico migrado', () => {
