@@ -32,7 +32,7 @@ describe('buildDemandaDocument', () => {
       makeCtx({
         motivoTermino: 'Despido',
         tipoDespido: 'Disciplinario',
-        despidoDisciplinario: 'Injurias',
+        despidoDisciplinario: 'Negociación Incompatible',
       })
     );
 
@@ -41,7 +41,7 @@ describe('buildDemandaDocument', () => {
       code: 'DOCUMENT_CASE_NOT_IMPLEMENTED',
       caseInfo: {
         caseKey: 'despido.disciplinario',
-        subKey: 'injurias',
+        subKey: 'negociacion incompatible',
       },
       clauseResult: null,
     });
