@@ -552,8 +552,51 @@ describe('buildDemandaDocument matrix', () => {
     expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
   });
 
+  it('construye Abandono de Trabajo con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Abandono de Trabajo',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.ABANDONO_TRABAJO,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.ABANDONO_TRABAJO,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isAbandonoTrabajo: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      'niego todas las imputaciones'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
   const disciplinaryNotImplemented = [
-    ['Abandono de Trabajo', DISCIPLINARY_KEYS.ABANDONO_TRABAJO],
     ['Falta de Probidad', DISCIPLINARY_KEYS.FALTA_DE_PROBIDAD],
     ['Otros Especificar', DISCIPLINARY_KEYS.OTROS_ESPECIFICAR],
   ] as const;
