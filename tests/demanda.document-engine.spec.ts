@@ -27,13 +27,12 @@ describe('buildDemandaDocument', () => {
     });
   });
 
-  it('rechaza una subcausal disciplinaria todavía no implementada', () => {
+  it('rechaza una subcausal disciplinaria desconocida', () => {
     const result = buildDemandaDocument(
       makeCtx({
         motivoTermino: 'Despido',
         tipoDespido: 'Disciplinario',
-        despidoDisciplinario: 'Otros Especificar',
-        otroDespidoDisciplinario: 'Detalle informado',
+        despidoDisciplinario: 'Subcausal Desconocida',
       })
     );
 
@@ -42,7 +41,7 @@ describe('buildDemandaDocument', () => {
       code: 'DOCUMENT_CASE_NOT_IMPLEMENTED',
       caseInfo: {
         caseKey: 'despido.disciplinario',
-        subKey: 'otros especificar',
+        subKey: 'subcausal desconocida',
       },
       clauseResult: null,
     });

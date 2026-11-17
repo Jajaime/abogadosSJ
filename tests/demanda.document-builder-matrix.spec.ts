@@ -640,36 +640,54 @@ describe('buildDemandaDocument matrix', () => {
     expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
   });
 
-  const disciplinaryNotImplemented = [
-    ['Otros Especificar', DISCIPLINARY_KEYS.OTROS_ESPECIFICAR],
-  ] as const;
-
-  for (const [formValue, expectedSubKey] of disciplinaryNotImplemented) {
-    it(`rechaza ${formValue} mientras su builder disciplinario no esté implementado`, () => {
-      const demanda: Record<string, unknown> = {
-        motivoTermino: 'Despido',
-        tipoDespido: 'Disciplinario',
-        despidoDisciplinario: formValue,
-      };
-
-      if (expectedSubKey === DISCIPLINARY_KEYS.OTROS_ESPECIFICAR) {
-        demanda.otroDespidoDisciplinario = 'Detalle informado';
-      }
-
-      const result = buildDemandaDocument(makeCtx(demanda));
-
-      expect(result).toMatchObject({
-        ok: false,
-        code: 'DOCUMENT_CASE_NOT_IMPLEMENTED',
-        faltantes: [],
-        caseInfo: {
-          caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
-          subKey: expectedSubKey,
+  it('construye Otros Especificar con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Otros Especificar',
+          otroDespidoDisciplinario: 'Detalle informado',
+          fechaTerminoRelaLaboral: '2026-11-12',
         },
-        clauseResult: null,
-      });
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.OTROS_ESPECIFICAR,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.OTROS_ESPECIFICAR,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isOtrosEspecificar: true,
+        },
+      },
     });
-  }
+
+    expect(result.caseInfo?.normalized.otroDespidoDisciplinario).toBe(
+      'Detalle informado'
+    );
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      'niego todas las imputaciones'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
 
   it('prioriza CLAUSULAS_VALIDATION antes de buscar un builder', () => {
     const result = buildDemandaDocument(
