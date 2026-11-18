@@ -11,6 +11,7 @@
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
+    "seed:document-review": "tsx prisma/scripts/seed-document-review.ts",
     "format": "prettier --write \"{app,demo,layout,types}/**/*.{js,ts,tsx,d.ts}\"",
     "lint": "eslint \"{app,components,hooks,layout,lib,utils,prisma,types}/**/*.{ts,tsx,js,jsx}\"",
     "test": "vitest run",
