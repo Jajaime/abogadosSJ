@@ -31,6 +31,13 @@ describe('buildDemandaDocument matrix', () => {
         },
       },
     });
+
+    expect(result.clauseResult?.sections.encabezado).toEqual([
+      '1) Motivo Término -> Renuncia',
+    ]);
+    expect(result.clauseResult?.sections.hechos).toEqual([
+      'Solo genera el pago del feriado legal o proporcional.',
+    ]);
   });
 
   it('construye Mutuo Acuerdo con su builder implementado', () => {
@@ -61,8 +68,12 @@ describe('buildDemandaDocument matrix', () => {
       },
     });
 
-    expect(result.clauseResult?.sections.hechos.join(' ')).toContain('$100.000');
-    expect(result.clauseResult?.sections.hechos.join(' ')).toContain('$50.000');
+    expect(result.clauseResult?.sections.encabezado).toEqual([
+      '2) Motivo Término -> Mutuo Acuerdo',
+    ]);
+    expect(result.clauseResult?.sections.hechos).toEqual([
+      'Se solicita el pago de los feriados legales y proporcionales pendientes al momento del término de la relación laboral, se solicita el pago Feriado Legal de 10 días por $100.000 y Feriado Proporcional de 5 días por $50.000.',
+    ]);
   });
 
   it('construye Autodespido con el texto jurídico migrado', () => {
@@ -177,6 +188,84 @@ describe('buildDemandaDocument matrix', () => {
     expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
   });
 
+  it('construye Término de Plazo con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Término de Plazo',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_TERMINO_PLAZO,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_TERMINO_PLAZO,
+        flags: {
+          isDespido: true,
+          isTerminoPlazo: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain('artículo 159');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
+  it('construye Término de Obra o Faena con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Término de Obra o Faena',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_TERMINO_OBRA_FAENA,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_TERMINO_OBRA_FAENA,
+        flags: {
+          isDespido: true,
+          isTerminoObra: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain(
+      'continúa la obra o faena'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
   it('construye Incumplimiento Grave con el builder disciplinario implementado', () => {
     const result = buildDemandaDocument(
       makeCtx(
@@ -184,8 +273,10 @@ describe('buildDemandaDocument matrix', () => {
           motivoTermino: 'Despido',
           tipoDespido: 'Disciplinario',
           despidoDisciplinario: 'Incumplimiento Grave',
+          fechaTerminoRelaLaboral: '2026-11-12',
         },
         {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
           remuneracion_clp: '$1.000.000',
           indemnizacion_monto_clp: '$3.000.000',
         }
@@ -208,81 +299,435 @@ describe('buildDemandaDocument matrix', () => {
         },
       },
     });
+
+    expect(result.clauseResult?.sections.encabezado).toEqual([
+      '3) Motivo Término -> Despido',
+      'a) Tipo Despido -> Disciplinario',
+      '1) Disciplinario -> Incumplimiento Grave',
+      'Incumplimiento Grave',
+    ]);
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain(
+      '26 de septiembre de 2025'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain(
+      'pago del bono trimestral'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain(
+      'La Corte Suprema sobre el presente ha indicado'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain(
+      'Artículo 168 del Código del Trabajo'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain(
+      'a si el despido'
+    );
   });
 
-  const principalNotImplemented = [
-    [
-      'Término de Plazo',
-      {
-        motivoTermino: 'Despido',
-        tipoDespido: 'Término de Plazo',
-      },
-      CASE_KEYS.DESPIDO_TERMINO_PLAZO,
-    ],
-    [
-      'Término de Obra o Faena',
-      {
-        motivoTermino: 'Despido',
-        tipoDespido: 'Término de Obra o Faena',
-      },
-      CASE_KEYS.DESPIDO_TERMINO_OBRA_FAENA,
-    ],
-  ] as const;
-
-  for (const [label, demanda, expectedCaseKey] of principalNotImplemented) {
-    it(`rechaza ${label} mientras su builder no esté implementado`, () => {
-      const result = buildDemandaDocument(makeCtx(demanda));
-
-      expect(result).toMatchObject({
-        ok: false,
-        code: 'DOCUMENT_CASE_NOT_IMPLEMENTED',
-        faltantes: [],
-        caseInfo: {
-          caseKey: expectedCaseKey,
+  it('construye Ausencia Injustificadas con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Ausencia Injustificadas',
+          fechaTerminoRelaLaboral: '2026-11-12',
         },
-        clauseResult: null,
-      });
-    });
-  }
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
 
-  const disciplinaryNotImplemented = [
-    ['Ausencia Injustificadas', DISCIPLINARY_KEYS.AUSENCIAS_INJUSTIFICADAS],
-    ['Acoso Sexual', DISCIPLINARY_KEYS.ACOSO_SEXUAL],
-    ['Acoso Laboral', DISCIPLINARY_KEYS.ACOSO_LABORAL],
-    ['Injurias', DISCIPLINARY_KEYS.INJURIAS],
-    ['Negociación Incompatible', DISCIPLINARY_KEYS.NEGOCIACION_INCOMPATIBLE],
-    ['Actos o Imprudencia Temeraria', DISCIPLINARY_KEYS.ACTOS_IMPRUDENCIA_TEMERARIA],
-    ['Abandono de Trabajo', DISCIPLINARY_KEYS.ABANDONO_TRABAJO],
-    ['Falta de Probidad', DISCIPLINARY_KEYS.FALTA_DE_PROBIDAD],
-    ['Otros Especificar', DISCIPLINARY_KEYS.OTROS_ESPECIFICAR],
-  ] as const;
-
-  for (const [formValue, expectedSubKey] of disciplinaryNotImplemented) {
-    it(`rechaza ${formValue} mientras su builder disciplinario no esté implementado`, () => {
-      const demanda: Record<string, unknown> = {
-        motivoTermino: 'Despido',
-        tipoDespido: 'Disciplinario',
-        despidoDisciplinario: formValue,
-      };
-
-      if (expectedSubKey === DISCIPLINARY_KEYS.OTROS_ESPECIFICAR) {
-        demanda.otroDespidoDisciplinario = 'Detalle informado';
-      }
-
-      const result = buildDemandaDocument(makeCtx(demanda));
-
-      expect(result).toMatchObject({
-        ok: false,
-        code: 'DOCUMENT_CASE_NOT_IMPLEMENTED',
-        faltantes: [],
-        caseInfo: {
-          caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
-          subKey: expectedSubKey,
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.AUSENCIAS_INJUSTIFICADAS,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.AUSENCIAS_INJUSTIFICADAS,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isAusenciasInjustificadas: true,
         },
-        clauseResult: null,
-      });
+      },
     });
-  }
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain(
+      '26 de septiembre de 2025'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
+  it('construye Acoso Sexual con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Acoso Sexual',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.ACOSO_SEXUAL,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.ACOSO_SEXUAL,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isAcosoSexual: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.derecho.join(' ')).toContain(
+      'niego todas las imputaciones'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
+  it('construye Acoso Laboral con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Acoso Laboral',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.ACOSO_LABORAL,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.ACOSO_LABORAL,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isAcosoLaboral: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      'niego todas las imputaciones'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
+  it('construye Injurias con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Injurias',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.INJURIAS,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.INJURIAS,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isInjurias: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      'niego todas las imputaciones'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
+  it('construye Negociación Incompatible con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Negociación Incompatible',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.NEGOCIACION_INCOMPATIBLE,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.NEGOCIACION_INCOMPATIBLE,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isNegociacionIncompatible: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      'niego todas las imputaciones'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
+  it('construye Actos o Imprudencia Temeraria con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Actos o Imprudencia Temeraria',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.ACTOS_IMPRUDENCIA_TEMERARIA,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.ACTOS_IMPRUDENCIA_TEMERARIA,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isActosImprudenciaTemeraria: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      'niego todas las imputaciones'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
+  it('construye Abandono de Trabajo con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Abandono de Trabajo',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.ABANDONO_TRABAJO,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.ABANDONO_TRABAJO,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isAbandonoTrabajo: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      'niego todas las imputaciones'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
+  it('construye Falta de Probidad con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Falta de Probidad',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.FALTA_DE_PROBIDAD,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.FALTA_DE_PROBIDAD,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isFaltaProbidad: true,
+        },
+      },
+    });
+
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      'niego todas las imputaciones'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
+  it('construye Otros Especificar con el texto jurídico migrado', () => {
+    const result = buildDemandaDocument(
+      makeCtx(
+        {
+          motivoTermino: 'Despido',
+          tipoDespido: 'Disciplinario',
+          despidoDisciplinario: 'Otros Especificar',
+          otroDespidoDisciplinario: 'Detalle informado',
+          fechaTerminoRelaLaboral: '2026-11-12',
+        },
+        {
+          fechaTerminoRelaLaboral_larga: '12 de noviembre de 2026',
+          remuneracion_clp: '$1.000.000',
+          indemnizacion_monto_clp: '$3.000.000',
+        }
+      )
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      caseInfo: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.OTROS_ESPECIFICAR,
+      },
+      clauseResult: {
+        caseKey: CASE_KEYS.DESPIDO_DISCIPLINARIO,
+        subKey: DISCIPLINARY_KEYS.OTROS_ESPECIFICAR,
+        flags: {
+          isDespido: true,
+          isDespidoDisciplinario: true,
+          isOtrosEspecificar: true,
+        },
+      },
+    });
+
+    expect(result.caseInfo?.normalized.otroDespidoDisciplinario).toBe(
+      'Detalle informado'
+    );
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      '12 de noviembre de 2026'
+    );
+    expect(result.clauseResult?.sections.hechos.join(' ')).toContain(
+      'niego todas las imputaciones'
+    );
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$1.000.000');
+    expect(result.clauseResult?.sections.peticiones.join(' ')).toContain('$3.000.000');
+  });
+
 
   it('prioriza CLAUSULAS_VALIDATION antes de buscar un builder', () => {
     const result = buildDemandaDocument(

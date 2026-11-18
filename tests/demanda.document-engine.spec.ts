@@ -8,30 +8,31 @@ const makeCtx = (demanda: Record<string, unknown>) => ({
 });
 
 describe('buildDemandaDocument', () => {
-  it('rechaza un caso principal reconocido pero aún no implementado', () => {
+  it('mantiene operativo el último caso principal migrado', () => {
     const result = buildDemandaDocument(
       makeCtx({
         motivoTermino: 'Despido',
-        tipoDespido: 'Término de Plazo',
+        tipoDespido: 'Término de Obra o Faena',
       })
     );
 
     expect(result).toMatchObject({
-      ok: false,
-      code: 'DOCUMENT_CASE_NOT_IMPLEMENTED',
+      ok: true,
       caseInfo: {
-        caseKey: 'despido.terminoPlazo',
+        caseKey: 'despido.terminoObraFaena',
       },
-      clauseResult: null,
+      clauseResult: {
+        caseKey: 'despido.terminoObraFaena',
+      },
     });
   });
 
-  it('rechaza una subcausal disciplinaria todavía no implementada', () => {
+  it('rechaza una subcausal disciplinaria desconocida', () => {
     const result = buildDemandaDocument(
       makeCtx({
         motivoTermino: 'Despido',
         tipoDespido: 'Disciplinario',
-        despidoDisciplinario: 'Acoso laboral',
+        despidoDisciplinario: 'Subcausal Desconocida',
       })
     );
 
@@ -40,7 +41,7 @@ describe('buildDemandaDocument', () => {
       code: 'DOCUMENT_CASE_NOT_IMPLEMENTED',
       caseInfo: {
         caseKey: 'despido.disciplinario',
-        subKey: 'acoso laboral',
+        subKey: 'subcausal desconocida',
       },
       clauseResult: null,
     });
