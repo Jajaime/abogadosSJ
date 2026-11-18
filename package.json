@@ -26,14 +26,14 @@
     "chart.js": "4.2.1",
     "docx-templates": "^4.14.1",
     "jose": "^5.2.4",
-    "next": "^16.3.6",
+    "next": "^16.4.1",
     "postcss": "^8.5.3",
     "primeflex": "^3.3.1",
     "primeicons": "^6.0.1",
     "primereact": "10.2.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "zod": "^3.24.2"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
@@ -41,8 +41,8 @@
     "@next/eslint-plugin-next": "^16.3.6",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^24.3.0",
-    "@typescript-eslint/eslint-plugin": "^8.46.1",
-    "@typescript-eslint/parser": "^8.46.1",
+    "@typescript-eslint/eslint-plugin": "^8.73.0",
+    "@typescript-eslint/parser": "^8.73.0",
     "eslint": "^9.37.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react": "^7.37.5",
@@ -54,9 +54,9 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.46.1",
-    "vite": "^6.4.3",
-    "vitest": "^4.1.11"
+    "typescript-eslint": "^8.73.0",
+    "vite": "^6.4.6",
+    "vitest": "^4.1.12"
   },
   "overrides": {
     "deepmerge-ts": "^8.0.1"

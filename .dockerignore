@@ -1,0 +1,9 @@
+.git
+node_modules
+.next
+coverage
+dist
+build
+.env*
+npm-debug.log*
+*.pem

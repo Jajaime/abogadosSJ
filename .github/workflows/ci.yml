@@ -1,0 +1,59 @@
+name: AbogadosSJ CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality and Security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: TypeScript
+        run: npm run typecheck
+
+      - name: ESLint
+        run: npm run lint -- --quiet
+
+      - name: Automated tests
+        run: npm test
+
+      - name: Full dependency audit
+        run: npm audit --audit-level=low
+
+      - name: Prepare isolated CI environment
+        shell: bash
+        run: |
+          echo "DATABASE_URL=postgresql://ci_user:ci_password@127.0.0.1:5432/abogadossj_ci" >> "$GITHUB_ENV"
+          printf 'JWT_SECRETS=ci:%s\n' "$(node -e "process.stdout.write(require('node:crypto').randomBytes(48).toString('base64url'))")" >> "$GITHUB_ENV"
+          echo "JWT_CURRENT_KID=ci" >> "$GITHUB_ENV"
+          echo "NEXT_TELEMETRY_DISABLED=1" >> "$GITHUB_ENV"
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Build Next.js production
+        run: npm run build

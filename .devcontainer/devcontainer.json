@@ -1,0 +1,19 @@
+{
+  "name": "Abogados SJ - WSL Docker",
+  "dockerComposeFile": "../compose.dev.yaml",
+  "service": "web",
+  "runServices": ["db", "web"],
+  "workspaceFolder": "/workspace",
+  "remoteUser": "node",
+  "overrideCommand": false,
+  "shutdownAction": "none",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "Prisma.prisma"
+      ]
+    }
+  }
+}
