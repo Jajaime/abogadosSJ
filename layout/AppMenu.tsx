@@ -55,6 +55,12 @@ const AppMenu = () => {
           to: '/pages/usuario',
           requiredPerm: 'viewUsersMenu', // solo admin
           badge: 'NEW'
+        },
+        {
+          label: 'Abogados',
+          icon: 'pi pi-fw pi-briefcase',
+          to: '/pages/abogados',
+          requiredPerm: 'viewAbogadosMenu'
         }
       ]
     }
