@@ -1,6 +1,8 @@
 import { z } from 'zod';
+import { abogadoPatrocinanteIdSchema } from '@/lib/abogados/asignacion';
 
 export interface DemandaPersistenceData {
+  abogadoPatrocinanteId: string | null;
   nombres: string;
   apPaterno: string;
   apMaterno: string;
@@ -240,6 +242,7 @@ export const demandadoSolUpdateSchema = demandadoSolSchema.extend({
 
 export const demandaPayloadSchema = z
   .object({
+    abogadoPatrocinanteId: abogadoPatrocinanteIdSchema.optional().transform((value) => value ?? null),
     id: optionalString('id', 64),
     // Cliente
     nombres: requiredString('nombres', 120),
@@ -317,6 +320,7 @@ export type DemandaPayload = z.infer<typeof demandaPayloadSchema>;
 export const toDemandaPersistence = (payload: DemandaPayload) => {
   const {
     demandadoSols,
+    abogadoPatrocinanteId,
     fechaNacimiento,
     fechaInicioRelacionLaboral,
     fechaTerminoRelaLaboral,
@@ -360,6 +364,7 @@ export const toDemandaPersistence = (payload: DemandaPayload) => {
   } = payload;
 
   const data: DemandaPersistenceData = {
+    abogadoPatrocinanteId,
     nombres,
     apPaterno,
     apMaterno,

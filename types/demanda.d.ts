@@ -14,6 +14,7 @@ export interface DemandaDTO {
     // Datos del cliente demandante
     id: number;
     usuarioId?: string;
+    abogadoPatrocinanteId?: string | null;
     nombres: string;
     apPaterno: string;
     apMaterno: string;

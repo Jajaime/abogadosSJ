@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 
 import { demandaPayloadSchema, MAX_DEMANDA_BODY_SIZE, toDemandaPersistence } from '@/types/demanda.schema';
@@ -86,6 +86,19 @@ export async function POST(req: Request) {
   try {
     const body = await parseDemandaPayload(req);
     const { data, demandadoSols } = toDemandaPersistence(body);
+
+    if (data.abogadoPatrocinanteId) {
+      const abogadoActivo = await prisma.abogado.findFirst({
+        where: { id: data.abogadoPatrocinanteId, activo: true },
+        select: { id: true },
+      });
+      if (!abogadoActivo) {
+        return NextResponse.json(
+          { error: 'El abogado patrocinante no existe o está inactivo.' },
+          { status: 422 }
+        );
+      }
+    }
 
     const nuevaDemanda = await prisma.demanda.create({
       data: {

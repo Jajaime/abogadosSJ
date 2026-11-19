@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { abogadoPatrocinanteIdSchema } from '@/lib/abogados/asignacion';
 
 import { requirePerm, isElevated } from '@/lib/api-authz';
 import { prisma } from '@/lib/prisma';
@@ -97,6 +98,14 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     const data = await req.json();
     const updateData: any = {};
 
+    if (Object.prototype.hasOwnProperty.call(data, 'abogadoPatrocinanteId')) {
+      const parsedAbogado = abogadoPatrocinanteIdSchema.safeParse(data.abogadoPatrocinanteId);
+      if (!parsedAbogado.success) {
+        return NextResponse.json({ error: 'Identificador de abogado inválido.' }, { status: 400 });
+      }
+      updateData.abogadoPatrocinanteId = parsedAbogado.data;
+    }
+
     const setIfString = (key: string, val: any) => {
       if (val !== undefined) updateData[key] = strFrom(val);
     };
@@ -175,6 +184,19 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       const exists = await tx.demanda.findUnique({ where: { id } });
       if (!exists) return null;
 
+      // Conservar una asignación histórica a abogado inactivo es válido;
+      // seleccionar uno inactivo como nueva asignación no lo es.
+      if (updateData.abogadoPatrocinanteId &&
+          updateData.abogadoPatrocinanteId !== exists.abogadoPatrocinanteId) {
+        const abogadoActivo = await tx.abogado.findFirst({
+          where: { id: updateData.abogadoPatrocinanteId, activo: true },
+          select: { id: true },
+        });
+        if (!abogadoActivo) {
+          throw new Error('ABOGADO_INACTIVO_O_INEXISTENTE');
+        }
+      }
+
       await tx.demanda.update({ where: { id }, data: updateData });
 
       // reemplazo de demandadoSolidario si viene
@@ -204,6 +226,12 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
 
     return NextResponse.json(toResponsePayload(updated), { status: 200 });
   } catch (error: any) {
+    if (error instanceof Error && error.message === 'ABOGADO_INACTIVO_O_INEXISTENTE') {
+      return NextResponse.json(
+        { error: 'El abogado patrocinante no existe o está inactivo.' },
+        { status: 422 }
+      );
+    }
     if (typeof error?.message === 'string' && error.message.startsWith('Fecha inválida')) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
