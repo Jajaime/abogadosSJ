@@ -32,6 +32,20 @@ model Session {
   @@index([userId])
 }
 
+model Abogado {
+  id                    String    @id @default(uuid())
+  nombreCompleto        String
+  run                   String    @unique
+  domicilioProfesional  String
+  correoElectronico     String?
+  telefono              String?
+  activo                Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  demandas              Demanda[] @relation("AbogadoPatrocinanteDemandas")
+}
+
 model Demanda {
   id                         Int                  @id @default(autoincrement())
   nombres                    String
@@ -76,9 +90,12 @@ model Demanda {
   updatedAt                  DateTime             @updatedAt
   usuarioId                  String?
   usuario                    Usuario?            @relation("UsuarioDemandas", fields: [usuarioId], references: [id], onDelete: SetNull)
+  abogadoPatrocinanteId      String?
+  abogadoPatrocinante        Abogado? @relation("AbogadoPatrocinanteDemandas", fields: [abogadoPatrocinanteId], references: [id], onDelete: Restrict)
   demandadoSolidario         DemandadoSolidario[]
   documentos                 DemandaDocumento[]
   materias                   String[]             @default([])
+  @@index([abogadoPatrocinanteId])
 }
 
 model DemandadoSolidario {
