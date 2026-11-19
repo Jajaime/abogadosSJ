@@ -26,6 +26,12 @@ import type { DemandaDTO, DemandadoSolDTO } from '@/types/demanda';
 import GestionarMesesAnos from '@/components/GestionarMesesAnos';
 
 type DropdownItem = { name: string; code: string };
+type AbogadoOpcion = {
+  id: string;
+  nombreCompleto: string;
+  run: string;
+  activo: boolean;
+};
 
 // --- util: radios
 const stringToBoolean = (v: string | null) => v === 'Sí';
@@ -72,6 +78,8 @@ const DemandaForm: React.FC = () => {
   const [globalFilter, setGlobalFilter] = useState('');
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [missingFields, setMissingFields] = useState<string[]>([]);
+  const [abogados, setAbogados] = useState<AbogadoOpcion[]>([]);
+  const [errorAbogados, setErrorAbogados] = useState<string>('');
 
   // ---- prestaciones (MultiSelect guarda objetos; enviamos nombres)
   const [dropdownItemPrestacionesAdeudada, setDropdownItemPrestacionesAdeudada] = useState<DropdownItem[]>([]);
@@ -83,6 +91,7 @@ const DemandaForm: React.FC = () => {
   const [formData, setFormData] = useState<DemandaDTO>({
     // Datos del cliente
     id: 0,
+    abogadoPatrocinanteId: null,
     nombres: '',
     apPaterno: '',
     apMaterno: '',
@@ -131,7 +140,6 @@ const DemandaForm: React.FC = () => {
     finiquito: false,
     prestacionesAdeudadas: [],
     materias: [],
-    createdAt: '',
   });
 
   // Helper to update form fields
@@ -334,6 +342,31 @@ const DemandaForm: React.FC = () => {
     []
   );
 
+  // Catálogo de abogados: el backend controla qué puede ver cada rol.
+  useEffect(() => {
+    let vigente = true;
+    const cargarAbogados = async () => {
+      try {
+        const response = await apiFetch('/api/abogados', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const disponibles: AbogadoOpcion[] = await response.json();
+        if (vigente) setAbogados(disponibles);
+      } catch {
+        if (vigente) setErrorAbogados('No se pudo consultar el catálogo de abogados.');
+      }
+    };
+    void cargarAbogados();
+    return () => { vigente = false; };
+  }, []);
+
+  const opcionesAbogados = abogados
+    .filter((a) => a.activo || a.id === formData.abogadoPatrocinanteId)
+    .map((a) => ({
+      id: a.id,
+      nombre: `${a.nombreCompleto} — ${a.run}${a.activo ? '' : ' (inactivo)'}`,
+      disabled: !a.activo,
+    }));
+
   // ===================== Cargar datos si es edición =====================
   useEffect(() => {
     const fetchDemanda = async () => {
@@ -493,6 +526,7 @@ const DemandaForm: React.FC = () => {
     setFormData((prev) => ({
       ...prev,
       // cliente
+      abogadoPatrocinanteId: null,
       nombres: '',
       apPaterno: '',
       apMaterno: '',
@@ -817,6 +851,25 @@ const DemandaForm: React.FC = () => {
         <div className="card">
           <h5>{isEdit ? 'EDITAR DEMANDA' : 'DATOS CLIENTE (NUEVA DEMANDA)'}</h5>
           <form onSubmit={handleSubmit} className="p-fluid formgrid grid">
+            <div className="field col-12 md:col-6">
+              <label htmlFor="abogadoPatrocinanteId">Abogado patrocinante</label>
+              <Dropdown
+                id="abogadoPatrocinanteId"
+                value={formData.abogadoPatrocinanteId ?? null}
+                onChange={(e) => setField('abogadoPatrocinanteId', e.value ?? null)}
+                options={opcionesAbogados}
+                optionLabel="nombre"
+                optionValue="id"
+                optionDisabled="disabled"
+                placeholder="Seleccione un abogado activo"
+                filter
+                showClear
+                disabled={Boolean(errorAbogados)}
+              />
+              <small className={errorAbogados ? 'p-error' : 'text-color-secondary'}>
+                {errorAbogados || 'La asignación es opcional mientras se prepara la integración con Word.'}
+              </small>
+            </div>
             <div className="p-fluid formgrid grid">
               <div className="field col-12 md:col-4">
                 <label htmlFor="nombres">Nombres</label>

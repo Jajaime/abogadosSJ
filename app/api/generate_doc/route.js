@@ -46,6 +46,15 @@ export async function POST(request) {
       where: { id: demandaId },
       include: {
         demandadoSolidario: true,
+        abogadoPatrocinante: {
+          select: {
+            id: true,
+            nombreCompleto: true,
+            run: true,
+            domicilioProfesional: true,
+            activo: true,
+          },
+        },
       },
     });
 
@@ -66,6 +75,17 @@ export async function POST(request) {
     const prepared = prepareDemandaDocument(demandaDB);
 
     if (!prepared.ok) {
+      if (prepared.code === 'DOCUMENT_ABOGADO_INVALIDO') {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Debe asignar un abogado patrocinante activo con datos profesionales completos.',
+            detail: prepared.detail,
+            code: prepared.code,
+          },
+          { status: 422 }
+        );
+      }
       if (prepared.code === 'DOCUMENT_BASE_VALIDATION') {
         return NextResponse.json(
           {

@@ -9,6 +9,11 @@ export const PERMISSIONS = {
   updateUser:    ['admin'] as const,
   deleteUser:    ['admin'] as const,
 
+  // ABOGADOS: lectura para redactores, administración sólo para encargados.
+  viewAbogadosMenu: ['admin', 'jefe_estudio'] as const,
+  listAbogados: ['admin', 'jefe_estudio', 'abogado_redactor'] as const,
+  manageAbogados: ['admin', 'jefe_estudio'] as const,
+
   //DEMANDAS
   viewDemandaMenu:  ['admin', 'jefe_estudio', 'abogado_redactor'] as const,
   listDemandas:     ['admin', 'jefe_estudio', 'abogado_redactor'] as const,
