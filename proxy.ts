@@ -97,9 +97,9 @@ const handleUnauthenticated = (request: NextRequest): NextResponse => {
   return response;
 };
 
-// ---- middleware ----
+// ---- proxy ----
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1) Público explícito
