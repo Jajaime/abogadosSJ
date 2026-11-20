@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { exigirCsrf } from '@/lib/security/csrf';
 import { ZodError } from 'zod';
 
 import { demandaPayloadSchema, MAX_DEMANDA_BODY_SIZE, toDemandaPersistence } from '@/types/demanda.schema';
@@ -82,6 +83,9 @@ export async function POST(req: Request) {
   // 👇 permiso fino para crear
   const { session, error } = await requirePerm('createDemanda');
   if (error) return error;
+
+  const csrfError = await exigirCsrf(req);
+  if (csrfError) return csrfError;
 
   try {
     const body = await parseDemandaPayload(req);

@@ -1,5 +1,6 @@
 // app/api/generate_doc/route.js
 import { NextResponse } from 'next/server';
+import { exigirCsrf } from '@/lib/security/csrf';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
@@ -27,6 +28,9 @@ export async function POST(request) {
   try {
     const { session, error } = await requirePerm('generateDoc');
     if (error) return error;
+
+    const csrfError = await exigirCsrf(request);
+    if (csrfError) return csrfError;
 
     const raw = await request.json();
     const parsed = requestSchema.safeParse(raw);

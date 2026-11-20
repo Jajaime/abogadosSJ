@@ -1,18 +1,8 @@
 import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
-import { getCsrfTokenFromCookies } from '@/lib/auth.server';
-import { CSRF_HEADER_NAME } from '@/lib/jwt-public';
+export { exigirCsrf } from '@/lib/security/csrf';
 
 const MAX_BODY_LENGTH = 8192;
-
-export async function exigirCsrf(request: Request): Promise<NextResponse | null> {
-  const cookieToken = await getCsrfTokenFromCookies();
-  const headerToken = request.headers.get(CSRF_HEADER_NAME);
-  if (!cookieToken || !headerToken || cookieToken !== headerToken) {
-    return NextResponse.json({ error: 'Token CSRF inválido' }, { status: 403 });
-  }
-  return null;
-}
 
 export async function leerJsonSeguro(request: Request): Promise<unknown> {
   const contentType = request.headers.get('content-type') ?? '';

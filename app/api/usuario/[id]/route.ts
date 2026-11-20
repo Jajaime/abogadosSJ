@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { exigirCsrf } from '@/lib/security/csrf';
 import bcrypt from 'bcryptjs';
 
 import { requireSession } from '@/lib/auth.server';
@@ -61,6 +62,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     await requireAdminSession();
+    const csrfError = await exigirCsrf(req);
+    if (csrfError) return csrfError;
     const { id } = await ctx.params; // 👈 importante: await
 
     const body = await req.json().catch(() => null);
@@ -147,6 +150,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     await requireAdminSession();
+    const csrfError = await exigirCsrf(_req);
+    if (csrfError) return csrfError;
     const { id } = await ctx.params; // 👈 importante: await
     await prisma.usuario.delete({ where: { id } });
     return NextResponse.json({ ok: true }, { status: 200 });

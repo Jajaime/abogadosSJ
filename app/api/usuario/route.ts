@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { exigirCsrf } from '@/lib/security/csrf';
 import bcrypt from 'bcryptjs';
 
 import { requireSession } from '@/lib/auth.server';
@@ -55,6 +56,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     await ensureAdmin();
+    const csrfError = await exigirCsrf(request);
+    if (csrfError) return csrfError;
 
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== 'object') {
