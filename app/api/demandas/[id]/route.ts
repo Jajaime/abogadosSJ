@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { exigirCsrf } from '@/lib/security/csrf';
 import { abogadoPatrocinanteIdSchema } from '@/lib/abogados/asignacion';
 
 import { requirePerm, isElevated } from '@/lib/api-authz';
@@ -86,6 +87,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { session, error } = await requirePerm('updateDemanda'); // 👈 solo admin/jefe_estudio
   if (error) return error;
+
+  const csrfError = await exigirCsrf(req);
+  if (csrfError) return csrfError;
 
   try {
     const { id: idStr } = await ctx.params;
@@ -247,6 +251,9 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { error } = await requirePerm('deleteDemanda'); // 👈 solo admin
   if (error) return error;
+
+  const csrfError = await exigirCsrf(_req);
+  if (csrfError) return csrfError;
 
   try {
     const { id: idStr } = await ctx.params;
