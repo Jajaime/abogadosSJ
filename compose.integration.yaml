@@ -1,0 +1,25 @@
+name: abogadossj-integration
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: "no"
+
+    environment:
+      POSTGRES_USER: abogadossj_it
+      POSTGRES_PASSWORD: ${ABOGADOS_IT_PASSWORD:?Falta la clave de pruebas}
+      POSTGRES_DB: abogadossj_it
+
+    ports:
+      - "127.0.0.1:5434:5432"
+
+    tmpfs:
+      - /var/lib/postgresql/data:rw,size=512m
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U abogadossj_it -d abogadossj_it
+      interval: 5s
+      timeout: 5s
+      retries: 20
