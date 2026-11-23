@@ -24,7 +24,14 @@ export async function POST(request: Request) {
       return res;
     }
   } catch {
-    // si algo falla leyendo cookies, fuerza salida
+    // Fallar de forma segura si no se puede verificar CSRF.
+    const res = NextResponse.json(
+      { ok: false, error: 'CSRF inválido' },
+      { status: 403 }
+    );
+    for (const c of clearAuthCookies()) res.cookies.set(c);
+    res.headers.set('Cache-Control', 'no-store');
+    return res;
   }
 
   let sessionId: string | null = null;

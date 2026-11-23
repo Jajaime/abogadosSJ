@@ -127,4 +127,4 @@ jobs:
         run: npx prisma migrate status
 
       - name: Run PostgreSQL integration tests
-        run: npx vitest run tests/integration.postgres.spec.ts
+        run: npx vitest run tests/integration.postgres.spec.ts tests/integration.auth-sessions.spec.ts
