@@ -1,5 +1,7 @@
+@use "./variables" as vars;
+
 .layout-footer {
-    transition: margin-left $transitionDuration;
+    transition: margin-left vars.$transitionDuration;
     display: flex;
     align-items: center;
     justify-content: center;
