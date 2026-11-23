@@ -64,7 +64,7 @@ const AppTopbar = forwardRef<AppTopbarRef>((props, ref) => {
                     <i className="pi pi-user"></i>
                     <span>Profile</span>
                 </button>
-                <button type="button" className="p-link layout-topbar-button" onClick={handleLogout}>
+                <button type="button" className="p-link layout-topbar-button" onClick={handleLogout} aria-label="Salir">
                     <i className="pi pi-sign-out"></i>
                     <span>Salir</span>
                 </button>
