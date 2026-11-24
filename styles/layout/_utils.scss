@@ -27,3 +27,61 @@
         top: 100px;
     }
 }
+
+/* Corrección visual checkbox PrimeReact */
+.p-checkbox {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+
+    .p-checkbox-input {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+    }
+}
+
+/* PrimeReact 10 - Estado visual del checkbox seleccionado */
+.p-checkbox.p-highlight .p-checkbox-box,
+.p-checkbox[data-p-highlight='true'] .p-checkbox-box {
+    background: var(--primary-color, #3B82F6);
+    border-color: var(--primary-color, #3B82F6);
+    color: #ffffff;
+}
+
+/* Mostrar el ticket de selección en blanco */
+.p-checkbox.p-highlight .p-checkbox-icon,
+.p-checkbox[data-p-highlight='true'] .p-checkbox-icon {
+    color: #ffffff;
+}
+
+/* Checkbox PrimeReact: tamaño y alineación */
+.p-checkbox {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.p-checkbox .p-checkbox-box {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+}
+
+/* Centrar y agrandar el ticket */
+.p-checkbox .p-checkbox-box .p-checkbox-icon,
+.p-checkbox .p-checkbox-box .p-checkbox-icon.p-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    line-height: 1;
+    flex-shrink: 0;
+}
